@@ -29,16 +29,17 @@ let translate (globals, functions) =
   (* Get types from the context *)
   let i32_t      = L.i32_type    context
   and i8_t       = L.i8_type     context
+  and string_t   = L.struct_type context [| (L.i8_type context) |]
   and i1_t       = L.i1_type     context
   and float_t    = L.double_type context
   and void_t     = L.void_type   context in
-
   (* Return the LLVM type for a MicroC type *)
   let ltype_of_typ = function
       A.Int   -> i32_t
     | A.Bool  -> i1_t
     | A.Float -> float_t
     | A.Char -> i8_t
+    | A.String -> string_t
     | A.Void  -> void_t
   in
 
@@ -79,6 +80,7 @@ let translate (globals, functions) =
 
     let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder
     and char_format_str = L.build_global_stringptr "%c\n" "fmt" builder
+    and string_format_str = L.build_global_stringptr "%s\n" "fmt" builder
     and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder in
 
     (* Construct the function's "locals": formal arguments and locally
@@ -116,6 +118,7 @@ let translate (globals, functions) =
       | SFliteral l -> L.const_float_of_string float_t l
       (*Turn character into integer representation*)
       | SCliteral l -> L.const_int i8_t (int_of_char l)
+      | SSliteral l -> L.const_stringz context l
       | SNoexpr     -> L.const_int i32_t 0
       | SId s       -> L.build_load (lookup s) s builder
       | SAssign (s, e) -> let e' = expr builder e in
@@ -170,6 +173,9 @@ let translate (globals, functions) =
 	    "printf" builder
       | SCall ("printc", [e]) ->
     L.build_call printf_func [| char_format_str ; (expr builder e) |]
+      "printf" builder
+      | SCall ("prints", [e]) ->
+    L.build_call printf_func [| string_format_str ; (expr builder e) |]
       "printf" builder
       | SCall (f, args) ->
          let (fdef, fdecl) = StringMap.find f function_decls in

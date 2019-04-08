@@ -43,6 +43,7 @@ let check (globals, functions) =
 			                         ("printf", Float);
                                ("printc", Char);
                                (*Assigned separate name for printing string for now*)
+                               ("prints", String);
 			                         ("printbig", Int) ]
   in
 
@@ -98,6 +99,7 @@ let check (globals, functions) =
       | Fliteral l -> (Float, SFliteral l)
       | BoolLit l  -> (Bool, SBoolLit l)
       | Cliteral l -> (Char, SCliteral l)
+      | Sliteral l -> (String, SSliteral l)
       | Noexpr     -> (Void, SNoexpr)
       | Id s       -> (type_of_identifier s, SId s)
       | Assign(var, e) as ex ->

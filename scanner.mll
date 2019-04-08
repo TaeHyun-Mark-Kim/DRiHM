@@ -37,7 +37,7 @@ rule token = parse
 | "bool"   { BOOL }
 | "float"  { FLOAT }
 | "char"   { CHAR }
-(*| "string" { STRING }*)
+| "string" { STRING }
 | "void"   { VOID }
 | "true"   { BLIT(true)  }
 | "false"  { BLIT(false) }
@@ -45,7 +45,8 @@ rule token = parse
 | digits '.'  digit* ( ['e' 'E'] ['+' '-']? digits )? as lxm { FLIT(lxm) }
 |['\'']['a'-'z' 'A'-'Z' '0'-'9' '!''@''#''$''%''^''&''*''('')''_''-''+''=''{''[''}' ']' '\'' '|' '~' '`'  '\"' ':' ';' '<' ',' '>' '.' '?' '/']['\'']
  as lxm { CLIT(String.get lxm 1) }
-(*STRING| ['\"']_['\"'] as lxm { SLIT(lxm) }*)
+|['\"']['a'-'z' ' ' 'A'-'Z' '0'-'9' '!''@''#''$''%''^''&''*''('')''_''-''+''=''{''[''}' ']' '\'' '|' '~' '`'  '\"' ':' ';' '<' ',' '>' '.' '?' '/']*['\"']
+ as lxm { SLIT(lxm) }
 | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']*     as lxm { ID(lxm) }
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
