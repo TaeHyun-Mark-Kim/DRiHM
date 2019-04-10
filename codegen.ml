@@ -29,7 +29,7 @@ let translate (globals, functions) =
   (* Get types from the context *)
   let i32_t      = L.i32_type    context
   and i8_t       = L.i8_type     context
-  and string_t   = L.struct_type context [| (L.i8_type context) |]
+  and string_t   = L.pointer_type (L.i8_type context)
   and i1_t       = L.i1_type     context
   and float_t    = L.double_type context
   and void_t     = L.void_type   context in
@@ -56,7 +56,12 @@ let translate (globals, functions) =
       L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
   let printf_func : L.llvalue =
       L.declare_function "printf" printf_t the_module in
-
+(*
+  let printf_t_string : L.lltype =
+      L.var_arg_function_type i32_t [| L.pointer_type (L.pointer_type i8_t)|] in
+  let printf_func_string : L.llvalue =
+      L.declare_function "printf" printf_t_string the_module in
+*)
   let printbig_t : L.lltype =
       L.function_type i32_t [| i32_t |] in
   let printbig_func : L.llvalue =
@@ -118,7 +123,7 @@ let translate (globals, functions) =
       | SFliteral l -> L.const_float_of_string float_t l
       (*Turn character into integer representation*)
       | SCliteral l -> L.const_int i8_t (int_of_char l)
-      | SSliteral l -> L.const_stringz context l
+      | SSliteral l -> L.build_global_stringptr l "string" builder
       | SNoexpr     -> L.const_int i32_t 0
       | SId s       -> L.build_load (lookup s) s builder
       | SAssign (s, e) -> let e' = expr builder e in
