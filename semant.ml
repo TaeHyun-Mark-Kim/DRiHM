@@ -100,6 +100,7 @@ let check (globals, functions) =
       | BoolLit l  -> (Bool, SBoolLit l)
       | Cliteral l -> (Char, SCliteral l)
       | Sliteral l ->
+        (*
         (* Trims the leading and trailing double quotations from string literal *)
         let buffer_to_string b (s : string) (offset : int) (length : int)  =
           Buffer.add_substring b s offset length;
@@ -108,7 +109,8 @@ let check (globals, functions) =
         let parse_string (s : string) =
           buffer_to_string (Buffer.create 80) s 1 ((String.length l) - 2)
         in
-        (String, SSliteral (parse_string l))
+        *)
+        (String, SSliteral l)
       | Noexpr     -> (Void, SNoexpr)
       | Id s       -> (type_of_identifier s, SId s)
       | Assign(var, e) as ex ->
@@ -139,6 +141,7 @@ let check (globals, functions) =
           | Less | Leq | Greater | Geq
                      when same && (t1 = Int || t1 = Float) -> Bool
           | And | Or when same && t1 = Bool -> Bool
+          | Add when same && t1 = String -> String
           | _ -> raise (
 	      Failure ("illegal binary operator " ^
                        string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^
