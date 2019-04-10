@@ -99,7 +99,16 @@ let check (globals, functions) =
       | Fliteral l -> (Float, SFliteral l)
       | BoolLit l  -> (Bool, SBoolLit l)
       | Cliteral l -> (Char, SCliteral l)
-      | Sliteral l -> (String, SSliteral l)
+      | Sliteral l ->
+        (* Trims the leading and trailing double quotations from string literal *)
+        let buffer_to_string b (s : string) (offset : int) (length : int)  =
+          Buffer.add_substring b s offset length;
+          Buffer.contents b
+        in
+        let parse_string (s : string) =
+          buffer_to_string (Buffer.create 80) s 1 ((String.length l) - 2)
+        in
+        (String, SSliteral (parse_string l))
       | Noexpr     -> (Void, SNoexpr)
       | Id s       -> (type_of_identifier s, SId s)
       | Assign(var, e) as ex ->
