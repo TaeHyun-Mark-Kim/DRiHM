@@ -128,7 +128,7 @@ let translate (globals, functions) =
       | SId s       -> L.build_load (lookup s) s builder
       | SAssign (s, e) -> let e' = expr builder e in
                           ignore(L.build_store e' (lookup s) builder); e'
-      | SBinop ((A.Float,_ ) as e1, op, e2) ->
+      | SBinop ((A.Float, _ ) as e1, op, e2) ->
 	  let e1' = expr builder e1
 	  and e2' = expr builder e2 in
 	  (match op with
@@ -145,6 +145,22 @@ let translate (globals, functions) =
 	  | A.And | A.Or ->
 	      raise (Failure "internal error: semant should have rejected and/or on float")
 	  ) e1' e2' "tmp" builder
+    
+    | SBinop ((A.String, SSliteral s1), op, (A.String, SSliteral s2)) ->
+  (match op with
+    A.Add ->
+      (*Function to add 2 Ocaml strings*)
+      let buffer_to_string b s1 s2 =
+        Buffer.add_string b s1;
+        Buffer.add_string b s2;
+        Buffer.contents b
+      in
+      let add_strings s1 s2 =
+        buffer_to_string (Buffer.create 80) s1 s2
+      in
+      L.build_global_stringptr (add_strings s1 s2) "str" builder
+    | _ -> raise (Failure "internal error: the operation is not supported for String types"))
+
       | SBinop (e1, op, e2) ->
 	  let e1' = expr builder e1
 	  and e2' = expr builder e2 in
