@@ -29,21 +29,38 @@ int** subtract_int_matrix(int** m1, int** m2, int row, int col){
     return res;
 }
 
+int** multiply_int_matrix(int** m1, int** m2, int m1_row, int m1_col, int m2_col){
+    int** res = malloc(m1_row * sizeof(int*));
+    for(int i = 0; i < m1_row; i++){
+      res[i] = malloc(m2_col * sizeof(int));
+    }
+    for(int i = 0; i < m1_row; i++){
+      for(int j = 0; j < m2_col; j++){
+        int val = 0;
+        for(int k = 0; k < m1_col; k++){
+          val += m1[i][k] * m2[k][j];
+        }
+        res[i][j] = val;
+      }
+    }
+    return res;
+}
+
 
 int main(){
-    int a1[] = {1, 2};
-    int a2[] = {3, 4};
-    int* a[2];
+    int a1[] = {1, 2, 3};
+    int* a[1];
     a[0] = a1;
-    a[1] = a2;
-    int b1[] = {5, 6};
-    int b2[] = {7, 8};
-    int* b[2];
+    int b1[] = {1, 4, 7};
+    int b2[] = {2, 5, 8};
+    int b3[] = {3, 6, 9};
+    int* b[3];
     b[0] = b1;
     b[1] = b2;
-    int** result = add_int_matrix(a, b, 2, 2);
-    for(int i = 0; i < 2; i++){
-        for(int j = 0; j < 2; j++){
+    b[2] = b3;
+    int** result = multiply_int_matrix(a, b, 1, 3, 3);
+    for(int i = 0; i < 1; i++){
+        for(int j = 0; j < 3; j++){
             printf("%d\n", result[i][j]);
         }
     }
