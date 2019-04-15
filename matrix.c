@@ -46,6 +46,19 @@ int** multiply_int_matrix(int** m1, int** m2, int m1_row, int m1_col, int m2_col
     return res;
 }
 
+void print_int_matrix(int** mat, int row, int col){
+    printf("%c", '[');
+    for(int i = 0; i < row; i++){
+      for(int j = 0; j < col; j++){
+        if(i == (row - 1) && j == (col - 1)) printf("%d]\n", mat[i][j]);
+        else if(i == 0 && j == 0) printf("%d, ", mat[i][j]);
+        else if(j == (col - 1)) printf("%d\n", mat[i][j]);
+        else if(j == 0) printf(" %d, ", mat[i][j]);
+        else printf("%d, ", mat[i][j]);
+      }
+    }
+}
+
 
 int main(){
     int a1[] = {1, 2, 3};
@@ -59,9 +72,7 @@ int main(){
     b[1] = b2;
     b[2] = b3;
     int** result = multiply_int_matrix(a, b, 1, 3, 3);
-    for(int i = 0; i < 1; i++){
-        for(int j = 0; j < 3; j++){
-            printf("%d\n", result[i][j]);
-        }
-    }
+    print_int_matrix(a, 1, 3);
+    print_int_matrix(b, 3, 3);
+    print_int_matrix(result, 1, 3);
 }
