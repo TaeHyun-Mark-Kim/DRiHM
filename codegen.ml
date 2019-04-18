@@ -21,6 +21,8 @@ module StringMap = Map.Make(String)
 (* translate : Sast.program -> Llvm.module *)
 let translate (globals, functions) =
   let context    = L.global_context () in
+  let llmem = L.MemoryBuffer.of_file "matrix_handler.bc" in
+  let llmbit = Llvm_bitreader.parse_bitcode context llmem in
 
   (* Create the LLVM compilation module into which
      we will generate code *)
@@ -29,25 +31,32 @@ let translate (globals, functions) =
   (* Get types from the context *)
   let i32_t      = L.i32_type    context
   and i8_t       = L.i8_type     context
-  and string_t   = L.struct_type context [| (L.i8_type context) |]
+  (* and string_t   = L.pointer_type (L.i8_type context) *)
   and i1_t       = L.i1_type     context
   and float_t    = L.double_type context
-  and void_t     = L.void_type   context in
+  and void_t     = L.void_type   context
+  and matrix_t    = L.pointer_type (match L.type_by_name llmbit "struct.matrix" with (******)
+      None -> raise (Failure "Missing implementation for struct Matrix")
+    | Some t -> t)
+  in
   (* Return the LLVM type for a MicroC type *)
   let ltype_of_typ = function
       A.Int   -> i32_t
     | A.Bool  -> i1_t
     | A.Float -> float_t
     | A.Char -> i8_t
-    | A.String -> string_t
+    (* | A.String -> string_t *)
     | A.Void  -> void_t
+    | A.Matrix -> matrix_t
   in
 
   (* Create a map of global variables after creating each *)
   let global_vars : L.llvalue StringMap.t =
-    let global_var m (t, n) =
+  (* let global_var m (t, n) = *)
+    let global_var m (t, n, _) =
       let init = match t with
           A.Float -> L.const_float (ltype_of_typ t) 0.0
+        (* | A.String -> L.const_array (ltype_of_typ t) "0" *)
         | _ -> L.const_int (ltype_of_typ t) 0
       in StringMap.add n (L.define_global n init the_module) m in
     List.fold_left global_var StringMap.empty globals in
@@ -57,10 +66,16 @@ let translate (globals, functions) =
   let printf_func : L.llvalue =
       L.declare_function "printf" printf_t the_module in
 
-  let printbig_t : L.lltype =
+  (* let printbig_t : L.lltype =
       L.function_type i32_t [| i32_t |] in
   let printbig_func : L.llvalue =
-      L.declare_function "printbig" printbig_t the_module in
+      L.declare_function "printbig" printbig_t the_module in *)
+
+  let printMatrix_t = L.function_type i32_t [| matrix_t; i32_t ; i32_t |] in
+  let printMatrix_f = L.declare_function "print_int_matrix" printMatrix_t the_module in
+
+  let matrix_init_t = L.function_type matrix_t [|i32_t ; i32_t|] in
+  let matrix_init_f = L.declare_function "initMatrix_CG" matrix_init_t the_module in
 
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
@@ -68,7 +83,7 @@ let translate (globals, functions) =
     let function_decl m fdecl =
       let name = fdecl.sfname
       and formal_types =
-	Array.of_list (List.map (fun (t,_) -> ltype_of_typ t) fdecl.sformals)
+	Array.of_list (List.map (fun (t,_,_) -> ltype_of_typ t) fdecl.sformals)
       in let ftype = L.function_type (ltype_of_typ fdecl.styp) formal_types in
       StringMap.add name (L.define_function name ftype the_module, fdecl) m in
     List.fold_left function_decl StringMap.empty functions in
@@ -99,10 +114,15 @@ let translate (globals, functions) =
 	let local_var = L.build_alloca (ltype_of_typ t) n builder
 	in StringMap.add n local_var m
       in
-
-      let formals = List.fold_left2 add_formal StringMap.empty fdecl.sformals
+(*********)
+      let sformals = List.map (fun (tp, vName, _) -> (tp, vName)) fdecl.sformals in
+      let slocals= List.map (fun (tp, vName, _) -> (tp, vName)) fdecl.slocals in
+(*********)
+        (* let formals = List.fold_left2 add_formal StringMap.empty fdecl.sformals *)
+      let formals = List.fold_left2 add_formal StringMap.empty sformals
           (Array.to_list (L.params the_function)) in
-      List.fold_left add_local formals fdecl.slocals
+          (* List.fold_left add_local formals fdecl.slocals *)
+      List.fold_left add_local formals slocals
     in
 
     (* Return the value for a variable or formal argument.
@@ -118,12 +138,23 @@ let translate (globals, functions) =
       | SFliteral l -> L.const_float_of_string float_t l
       (*Turn character into integer representation*)
       | SCliteral l -> L.const_int i8_t (int_of_char l)
-      | SSliteral l -> L.const_stringz context l
+      (* | SSliteral l ->  L.build_global_stringptr s "str" builder *)
       | SNoexpr     -> L.const_int i32_t 0
       | SId s       -> L.build_load (lookup s) s builder
-      | SAssign (s, e) -> let e' = expr builder e in
+
+      | SMatrixLit (contents, rows, cols) ->
+        let rec expr_list = function
+          [] -> []
+          | hd::tl -> expr builder hd::expr_list tl
+            in
+            let contents' = expr_list contents
+            in
+            let m = L.build_call matrix_init_f [| L.const_int i32_t cols; L.const_int i32_t rows |] "matrix_init" builder
+            in m
+
+    | SAssign (s, e) -> let e' = expr builder e in
                           ignore(L.build_store e' (lookup s) builder); e'
-      | SBinop ((A.Float,_ ) as e1, op, e2) ->
+    | SBinop ((A.Float,_ ) as e1, op, e2) ->
 	  let e1' = expr builder e1
 	  and e2' = expr builder e2 in
 	  (match op with
@@ -166,14 +197,18 @@ let translate (globals, functions) =
       | SCall ("print", [e]) | SCall ("printb", [e]) ->
 	  L.build_call printf_func [| int_format_str ; (expr builder e) |]
 	    "printf" builder
-      | SCall ("printbig", [e]) ->
-	  L.build_call printbig_func [| (expr builder e) |] "printbig" builder
+      (* | SCall ("printbig", [e]) ->
+	  L.build_call printbig_func [| (expr builder e) |] "printbig" builder *)
       | SCall ("printf", [e]) ->
 	  L.build_call printf_func [| float_format_str ; (expr builder e) |]
 	    "printf" builder
       | SCall ("printc", [e]) ->
     L.build_call printf_func [| char_format_str ; (expr builder e) |]
       "printf" builder
+      | SCall ("printm", [e;e1;e2]) ->
+        L.build_call printMatrix_f [| (expr builder e); (expr builder e1) ; (expr builder e2)|] "printm" builder
+        (* THIS DOES NOT WORK^ *)
+
       | SCall ("prints", [e]) ->
     L.build_call printf_func [| string_format_str ; (expr builder e) |]
       "printf" builder
@@ -217,14 +252,36 @@ let translate (globals, functions) =
 	 add_terminal (stmt (L.builder_at_end context then_bb) then_stmt)
 	   build_br_merge;
 
+     (* first generates else/then label, then the statements *)
+
 	 let else_bb = L.append_block context "else" the_function in
 	 add_terminal (stmt (L.builder_at_end context else_bb) else_stmt)
 	   build_br_merge;
+
+    (* let end_b = L.append_block context "if_end" the_function in
+    let br_end = L.build end_b in *)
+
+    (* add_terminal(L.builder_at_end context then_b) br_end;
+    add_terminal(L.builder_at_end context else_b) br_end;
+    ignore(L.build_cond_br bool_val then_b else_b builder); *)
 
 	 ignore(L.build_cond_br bool_val then_bb else_bb builder);
 	 L.builder_at_end context merge_bb
 
       | SWhile (predicate, body) ->
+
+    (* let while_b = L.append_block context "while_end" the_function in
+    (* generate label, then code for predicate *)
+    let while_end = L.build_br while_b in
+      (* Check statement *)
+    let bool_addr = build_expr predicate in
+
+    (* now we need to jump the body*)
+    let body_b = L.append_block contest "while_body" the_function in
+        (* Check statement *)
+    ignore(build_stmt the_function (L.builder_at_end context body_b) body);
+    add_terminal (stmt (L.builder_at_end context body_b) br_while; *)
+
 	  let pred_bb = L.append_block context "while" the_function in
 	  ignore(L.build_br pred_bb builder);
 

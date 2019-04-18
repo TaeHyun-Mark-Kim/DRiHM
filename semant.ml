@@ -15,14 +15,15 @@ let check (globals, functions) =
   (* Verify a list of bindings has no void types or duplicate names *)
   let check_binds (kind : string) (binds : bind list) =
     List.iter (function
-	(Void, b) -> raise (Failure ("illegal void " ^ kind ^ " " ^ b))
+	(Void, b, _) -> raise (Failure ("illegal void " ^ kind ^ " " ^ b))
       | _ -> ()) binds;
     let rec dups = function
         [] -> ()
-      |	((_,n1) :: (_,n2) :: _) when n1 = n2 ->
+      (* |	((_,n1) :: (_,n2) :: _) when n1 = n2 -> *)
+      |	((_,n1,_) :: (_,n2,_) :: _) when n1 = n2 ->
 	  raise (Failure ("duplicate " ^ kind ^ " " ^ n1))
       | _ :: t -> dups t
-    in dups (List.sort (fun (_,a) (_,b) -> compare a b) binds)
+    in dups (List.sort (fun (_,a,_) (_,b,_) -> compare a b) binds)
   in
 
   (**** Check global variables ****)
@@ -33,18 +34,26 @@ let check (globals, functions) =
 
   (* Collect function declarations for built-in functions: no bodies *)
   let built_in_decls =
-    let add_bind map (name, ty) = StringMap.add name {
-      typ = Void;
+    (* let add_bind map (name, ty) = StringMap.add name { *)
+    let add_bind map (name, ty, ret) = StringMap.add name {
+(*  typ=Void*)
+      typ=ret;
       fname = name;
-      formals = [(ty, "x")];
+      formals =
+    (let rec create_ty_list = (function
+      [] -> []
+      | hd::tl -> (hd, "x", Noexpr)::(create_ty_list tl))
+    in create_ty_list ty);
+      (* formals = [(ty, "x")]; *)
       locals = []; body = [] } map
-    in List.fold_left add_bind StringMap.empty [ ("print", Int);
-			                         ("printb", Bool);
-			                         ("printf", Float);
-                               ("printc", Char);
+    in List.fold_left add_bind StringMap.empty [ ("print", [Int], Void);
+			                         ("printb", [Bool], Void);
+			                         ("printf", [Float], Void);
+                               ("printc", [Char], Void);
+                               ("printm", [Matrix; Int; Int], Void);
                                (*Assigned separate name for printing string for now*)
-                               ("prints", String);
-			                         ("printbig", Int) ]
+                               ("prints", [String], Void);
+			                         ("printbig", [Int], Void) ]
   in
 
   (* Add function name to symbol table *)
@@ -82,8 +91,21 @@ let check (globals, functions) =
        if lvaluet = rvaluet then lvaluet else raise (Failure err)
     in
 
+    let rec get_dims = function
+        MatrixLit l -> List.length l :: get_dims (List.hd l)
+      | _ -> []
+    in
+    (* Raise an exception if dimensions of Matrix are not balanced *)
+    let rec flatten d = function
+      [] -> []
+      | MatrixLit hd::tl -> if List.length hd != List.hd d then raise (Failure("Invalid dims")) else List.append (flatten (List.tl d) hd) (flatten d tl)
+      | a -> a
+    in
+
     (* Build local symbol table of variables for this function *)
-    let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
+    (* let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
+	                StringMap.empty (globals @ func.formals @ func.locals ) *)
+    let symbols = List.fold_left (fun m (ty, name,_) -> StringMap.add name ty m)
 	                StringMap.empty (globals @ func.formals @ func.locals )
     in
 
@@ -100,6 +122,21 @@ let check (globals, functions) =
       | BoolLit l  -> (Bool, SBoolLit l)
       | Cliteral l -> (Char, SCliteral l)
       | Sliteral l -> (String, SSliteral l)
+      | MatrixLit l ->
+          let d = get_dims (MatrixLit l) in
+          let rec all_match = function
+            [] -> ignore()
+            | hd::tl -> if tl != [] then
+                          let (t1, _) = expr hd in let (t2, _) = expr (List.hd tl) in
+                          if t1 = t2 then all_match tl else raise (Failure ("Data Mismatch in MatrixLit: " ^ string_of_typ t1 ^ " does not match " ^ string_of_typ t2))
+                        else ignore()
+          in
+          all_match l;
+          if List.length d > 2 then (Matrix, SMatrixLit ((List.map expr l), List.hd d, List.hd (List.tl d)))
+          else if List.length d = 2 then (Matrix, SMatrixLit ( (List.map expr (flatten (List.tl d) l)), List.hd d, List.hd (List.tl d)))
+          else if List.length d = 1 then (Matrix, SMatrixLit ( (List.map expr (flatten (List.tl d) l)), List.hd d, 1))
+          else (Matrix, SMatrixLit ( (List.map expr l), 0,0))
+
       | Noexpr     -> (Void, SNoexpr)
       | Id s       -> (type_of_identifier s, SId s)
       | Assign(var, e) as ex ->
@@ -147,7 +184,11 @@ let check (globals, functions) =
               " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e
             in (check_assign ft et err, e')
           in
-          let args' = List.map2 check_call fd.formals args
+          (* let args' = List.map2 check_call fd.formals args *)
+          let fdFormals = List.map (fun (tp, vName, _) -> (tp, vName) ) fd.formals
+          in
+          let args' = List.map2 check_call fdFormals args
+
           in (fd.typ, SCall(fname, args'))
     in
 
@@ -184,8 +225,10 @@ let check (globals, functions) =
     in (* body of check_function *)
     { styp = func.typ;
       sfname = func.fname;
-      sformals = func.formals;
-      slocals  = func.locals;
+      (* sformals = func.formals;
+      slocals  = func.locals; *)
+      sformals = List.map (fun (t,n,v) -> (t,n, expr v)) func.formals;
+      slocals  = List.map (fun (t,n,v) -> (t,n, expr v)) func.locals;
       sbody = match check_stmt (Block func.body) with
 	SBlock(sl) -> sl
       | _ -> raise (Failure ("internal error: block didn't become a block?"))

@@ -5,9 +5,9 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
 
 type uop = Neg | Not
 
-type typ = Int | Bool | Float | Char | String | Void
+type typ = Int | Bool | Float | Char | String | Void | Matrix
 
-type bind = typ * string
+
 
 type expr =
     Literal of int
@@ -20,7 +20,10 @@ type expr =
   | Unop of uop * expr
   | Assign of string * expr
   | Call of string * expr list
+  | MatrixLit of expr list
   | Noexpr
+
+type bind = typ * string * expr
 
 type stmt =
     Block of stmt list
@@ -66,7 +69,8 @@ let rec string_of_expr = function
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | Cliteral(l) -> Char.escaped l
-  | Sliteral(l) -> l
+  | Sliteral(s) -> "\"" ^ s ^ "\""
+  | MatrixLit(l) -> "matrixLit[" ^ String.concat ", " (List.map string_of_expr l) ^ "]"
   | Id(s) -> s
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
@@ -96,17 +100,21 @@ let string_of_typ = function
   | Char -> "char"
   | String -> "string"
   | Void -> "void"
+  | Matrix -> "matrix"
 
-let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
+let string_of_vdecl (t, id, _) = string_of_typ t ^ " " ^ id ^ ";\n"
 
 let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
-  fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
+  (* fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^ *)
+  fdecl.fname ^ "(" ^ String.concat ", " (List.map (fun (_, vName, _) -> vName) fdecl.formals) ^
   ")\n{\n" ^
   String.concat "" (List.map string_of_vdecl fdecl.locals) ^
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
 let string_of_program (vars, funcs) =
+  let f' = List.rev funcs in
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
-  String.concat "\n" (List.map string_of_fdecl funcs)
+  String.concat "\n" (List.map string_of_fdecl f')
+  (* String.concat "\n" (List.map string_of_fdecl funcs) *)
