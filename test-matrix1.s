@@ -7,13 +7,13 @@ _main:                                  ## @main
 ## %bb.0:                               ## %entry
 	pushq	%rax
 	.cfi_def_cfa_offset 16
-	movl	$2, %edi
-	movl	$2, %esi
+	movl	$1, %edi
+	movl	$1, %esi
 	callq	_initMatrix_CG
 	movq	%rax, (%rsp)
 	movq	%rax, %rdi
-	movl	$2, %esi
-	movl	$2, %edx
+	movl	$1, %esi
+	movl	$1, %edx
 	callq	_print_int_matrix
 	xorl	%eax, %eax
 	popq	%rcx

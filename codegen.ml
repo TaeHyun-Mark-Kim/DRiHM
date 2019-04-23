@@ -35,7 +35,7 @@ let translate (globals, functions) =
   and i1_t       = L.i1_type     context
   and float_t    = L.double_type context
   and void_t     = L.void_type   context
-  and matrix_t    = L.pointer_type (match L.type_by_name llmbit "struct.matrix" with (******)
+  and matrix_t   = L.pointer_type (match L.type_by_name llmbit "struct.matrix" with (******)
       None -> raise (Failure "Missing implementation for struct Matrix")
     | Some t -> t)
   in
@@ -131,6 +131,37 @@ let translate (globals, functions) =
                    with Not_found -> StringMap.find n global_vars
     in
 
+    let get_values_list2 ll : L.llvalue list =
+      let rec go acc = function
+        | [] -> List.rev acc
+        | l :: r -> go (List.rev_append l acc) r
+          in
+          go [] ll
+    in
+    let rec expr2 builder ((_, e) : sexpr) = match e with
+       SLiteral i  ->  L.const_int i32_t i
+      | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0)
+      | SFliteral l -> L.const_float_of_string float_t l
+      (*Turn character into integer representation*)
+      | SCliteral l -> L.const_int i8_t (int_of_char l)
+      (* | SSliteral l ->  L.build_global_stringptr s "str" builder *)
+      | SNoexpr     -> L.const_int i32_t 0
+      (* | SId s       -> L.build_load (lookup s) s builder *)
+in
+   let get_values_list m = match m with
+      | SMatrixLit (contents, rows, cols) ->
+      let rec expr_list = function
+        [] -> []
+        | hd::tl -> expr2 builder hd::expr_list tl
+          in
+          let contents' = expr_list contents
+          in
+          get_values_list2 contents'
+
+      | _ -> None
+      in
+
+
     (* Construct code for an expression; return its value *)
     let rec expr builder ((_, e) : sexpr) = match e with
 	SLiteral i  -> L.const_int i32_t i
@@ -206,7 +237,7 @@ let translate (globals, functions) =
     L.build_call printf_func [| char_format_str ; (expr builder e) |]
       "printf" builder
       | SCall ("printm", [e;e1;e2]) ->
-        L.build_call printMatrix_f [| (expr builder e); (expr builder e1) ; (expr builder e2)|] "printm" builder
+        L.build_call printMatrix_f [| (get_values_list e); (expr builder e1) ; (expr builder e2)|] "printm" builder
         (* THIS DOES NOT WORK^ *)
 
       | SCall ("prints", [e]) ->
