@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 void** init_empty_matrix(){
     void** res;
@@ -222,7 +223,44 @@ void print_char_matrix(char** mat, int row, int col){
     }
 }
 
+int** int_cofactorM(int** m, int dim, int r, int c){
+  int d = dim - 1;
+	int** res = malloc(d * sizeof(int*));
+	for(int i = 0; i < d; i++){
+		res[i] = malloc(d * sizeof(int));
+	}
+	for(int i = 1; i < dim; i++){
+		for(int j = 0; j < dim; j++){
+      if(j < c){
+        res[i - 1][j] = m[i][j];
+      }
+      else if (j > c){
+        res[i - 1][j - 1] = m[i][j];
+      }
+    }
+  }
+  return res;
+}
+
+int int_det(int** m, int dim){
+	int d = 0;
+  if (dim == 0){
+    return 1;
+  }
+  if (dim == 1){
+    return m[0][0];
+  }
+	if (dim == 2){
+		return ( (m[0][0] * m[1][1]) - (m[1][0] * m[0][1]));
+	}
+	for(int i = 0; i < dim; i++){
+    d+= ((int) pow(-1.0, (double) i)) * m[0][i] * int_det(int_cofactorM(m, dim, 0, i), dim - 1);
+	}
+	return d;
+}
+
 int main(){
+    /*
     int a1[] = {1, 2, 3};
     int* a[1];
     a[0] = a1;
@@ -252,4 +290,17 @@ int main(){
     float** res5 = init_float_matrix(f2, 1, 3);
     float** res6 = add_float_matrix(res4, res5, 1, 3);
     print_float_matrix(res6, 1, 3);
+    */
+    int g2[] = {1, 2, 3, 4};
+    int** res8 = init_int_matrix(g2, 2, 2);
+    print_int_matrix(res8, 2, 2);
+    printf("%d\n", int_det(res8, 2));
+    int g1[] = {1, 2, 3, 4, 2, 1, 3, 4, 1, 2, 4, 3, 3, 1, 2, 4};
+    int** res7 = init_int_matrix(g1, 4, 4);
+    print_int_matrix(res7, 4, 4);
+    printf("%d\n", int_det(res7, 4));
+    int g3[] = {1, 3, 4, 7, 6, 4, 7, 3, 4, 1, 4, 8, 9, 1, 0, 3, 8, 2, 7, 6, 2, 4, 7, 0, 8};
+    int** res9 = init_int_matrix(g3, 5, 5);
+    print_int_matrix(res9, 5, 5);
+    printf("%d\n", int_det(res9, 5));
 }
