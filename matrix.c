@@ -1,6 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+void** init_empty_matrix(){
+    void** res;
+    return res;
+}
+
 int** init_int_matrix(int* source, int row, int col){
     int** res = malloc(row * sizeof(int*));
     for(int i = 0; i < row; i++){
