@@ -246,4 +246,10 @@ int main(){
     char e[] = {'a', 'b', 'c', 'd', 'e', 'f'};
     char** res3 = init_char_matrix(e, 3, 2);
     print_char_matrix(res3, 3, 2);
+    float f1[] = {1.2, 2.56, 3};
+    float f2[] = {3.4, 6.66, 4.33};
+    float** res4 = init_float_matrix(f1, 1, 3);
+    float** res5 = init_float_matrix(f2, 1, 3);
+    float** res6 = add_float_matrix(res4, res5, 1, 3);
+    print_float_matrix(res6, 1, 3);
 }
