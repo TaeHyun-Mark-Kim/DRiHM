@@ -8,8 +8,8 @@ test : all testall.sh
 # to test linking external code
 
 .PHONY : all
-all : microc.native matrix_handler.o
-# all : microc.native printbig.o matrix_handler.o
+all : microc.native matrix.o
+# all : microc.native printbig.o matrix.o
 
 # "make microc.native" compiles the compiler
 #
@@ -18,7 +18,7 @@ all : microc.native matrix_handler.o
 #
 # See https://github.com/ocaml/ocamlbuild/blob/master/manual/manual.adoc
 
-microc.native : matrix_handler.bc
+microc.native : matrix.bc
 	opam config exec -- \
 	ocamlbuild -use-ocamlfind microc.native -pkgs llvm,llvm.analysis,llvm.bitreader
 
@@ -27,18 +27,18 @@ microc.native : matrix_handler.bc
 .PHONY : clean
 clean :
 	ocamlbuild -clean
-	rm -rf testall.log ocamlllvm *.diff *.ll *.o *.bc matrix_handler
+	rm -rf testall.log ocamlllvm *.diff *.ll *.o *.bc matrix
 
 # Testing the "printbig" example
 
 # printbig : printbig.c
 # 	cc -o printbig -DBUILD_TEST printbig.c
 
-matrix_handler : matrix_handler.c
-	cc -o matrix_handler -DBUILD_TEST matrix_handler.c
+matrix : matrix.c
+	cc -o matrix -DBUILD_TEST matrix.c
 
-matrix_handler.bc :matrix_handler.c
-	clang -emit-llvm -o matrix_handler.bc -c matrix_handler.c -Wno-varargs
+matrix.bc :matrix.c
+	clang -emit-llvm -o matrix.bc -c matrix.c -Wno-varargs
 
 
 # Building the tarball

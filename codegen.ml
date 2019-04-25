@@ -21,7 +21,7 @@ module StringMap = Map.Make(String)
 (* translate : Sast.program -> Llvm.module *)
 let translate (globals, functions) =
   let context    = L.global_context () in
-  let llmem = L.MemoryBuffer.of_file "matrix_handler.bc" in
+  let llmem = L.MemoryBuffer.of_file "matrix.bc" in
   let llmbit = Llvm_bitreader.parse_bitcode context llmem in
 
   (* Create the LLVM compilation module into which
@@ -35,9 +35,13 @@ let translate (globals, functions) =
   and i1_t       = L.i1_type     context
   and float_t    = L.double_type context
   and void_t     = L.void_type   context
-  and matrix_t   = L.pointer_type (match L.type_by_name llmbit "struct.matrix" with (******)
-      None -> raise (Failure "Missing implementation for struct Matrix")
+  (*and int_array_t = L.pointer_type (L.i32_type context)*)
+  and int_array_t = L.i32_type    context
+  and mat_t   = L.pointer_type (match L.type_by_name llmbit "INT_MATRIX" with (******)
+      None -> raise (Failure "Matrix type is missing in C")
     | Some t -> t)
+  (*and int_matrix_t = L.pointer_type (L.pointer_type (L.i32_type context))*)
+  and int_matrix_t = L.i32_type    context
   in
   (* Return the LLVM type for a MicroC type *)
   let ltype_of_typ = function
@@ -47,7 +51,8 @@ let translate (globals, functions) =
     | A.Char -> i8_t
     (* | A.String -> string_t *)
     | A.Void  -> void_t
-    | A.Matrix -> matrix_t
+    (*Need to change later*)
+    | A.Matrix -> int_matrix_t
   in
 
   (* Create a map of global variables after creating each *)
@@ -71,11 +76,18 @@ let translate (globals, functions) =
   let printbig_func : L.llvalue =
       L.declare_function "printbig" printbig_t the_module in *)
 
-  let printMatrix_t = L.function_type i32_t [| matrix_t; i32_t ; i32_t |] in
+  let printMatrix_t = L.function_type i32_t [| mat_t; i32_t ; i32_t |] in
   let printMatrix_f = L.declare_function "print_int_matrix" printMatrix_t the_module in
 
+  (*
   let matrix_init_t = L.function_type matrix_t [|i32_t ; i32_t|] in
   let matrix_init_f = L.declare_function "initMatrix_CG" matrix_init_t the_module in
+  *)
+  let init_int_matrix_t = L.function_type mat_t [|int_matrix_t; i32_t; i32_t|] in
+  let init_int_matrix_f = L.declare_function "init_int_matrix" init_int_matrix_t the_module in
+
+  let fill_int_matrix_t = L.function_type mat_t [|mat_t; i32_t; i32_t; i32_t; i32_t|] in
+  let fill_int_matrix_f = L.declare_function "fill_int_matrix" fill_int_matrix_t the_module in
 
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
@@ -130,25 +142,55 @@ let translate (globals, functions) =
     let lookup n = try StringMap.find n local_vars
                    with Not_found -> StringMap.find n global_vars
     in
-
-    let get_values_list2 ll : L.llvalue =
+    (*
+    let get_values_list2 ll : L.llvalue list  =
       let rec go acc = function
         | [] -> List.rev acc
         | l :: r -> go (List.rev_append l acc) r
           in
           go [] ll
     in
-    let rec expr2 builder ((_, e) : sexpr) = match e with
-       SLiteral i  ->  L.const_int i32_t i
-      | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0)
-      | SFliteral l -> L.const_float_of_string float_t l
+    *)
+    let rec expr2 builder ((_, e) : sexpr) = (match e with
+       SLiteral i  ->  [L.const_int i32_t i]
+      | SBoolLit b  -> [L.const_int i1_t (if b then 1 else 0)]
+      | SFliteral l -> [L.const_float_of_string float_t l]
       (*Turn character into integer representation*)
-      | SCliteral l -> L.const_int i8_t (int_of_char l)
+      | SCliteral l -> [L.const_int i8_t (int_of_char l)]
       (* | SSliteral l ->  L.build_global_stringptr s "str" builder *)
-      | SNoexpr     -> L.const_int i32_t 0
+      | SNoexpr     -> [L.const_int i32_t 0]
       (* | SId s       -> L.build_load (lookup s) s builder *)
-in
-   let get_values_list m = match m with
+      (*dummy variable, mat shouldn't implement string type but for the sake of ocaml compiler*)
+      | SLiteral i  -> [L.const_int i32_t i]
+      | SMatrixLit (contents, rows, cols) -> get_values_list contents
+    )
+    and
+    get_values_list mat_contents =
+     let rec go acc = function
+      | [] -> acc
+      | hd :: tl -> go (List.append acc (expr2 builder hd)) tl
+      in
+      go [] mat_contents
+    in
+    let list_to_array l =
+      let rec put_element arr list_content index =
+        match list_content with
+        [] -> arr
+        | hd :: tl -> put_element (Array.set arr index hd; arr) tl (index + 1)
+        in
+        put_element (Array.make (List.length l) (List.hd l)) l 0
+    in
+    (*
+    let to_llvm_array arr =
+      L.const_array (L.type_of (Array.get arr 0)) arr
+    in
+    *)
+    let build_int_pointer arr =
+      L.const_gep (Array.get arr 0) arr
+    in
+
+     (*
+      match m with
       | SMatrixLit (contents, rows, cols) ->
       let rec expr_list = function
         [] -> []
@@ -160,11 +202,16 @@ in
 
       | _ -> None
       in
+      *)
+(*
+      let to_list m =
 
+        let build_list (expr_list : sexpr list) acc = match List.hd expr_list with
+          *)
 
     (* Construct code for an expression; return its value *)
     let rec expr builder ((_, e) : sexpr) = match e with
-	SLiteral i  -> L.const_int i32_t i
+	      SLiteral i  -> L.const_int i32_t i
       | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0)
       | SFliteral l -> L.const_float_of_string float_t l
       (*Turn character into integer representation*)
@@ -174,6 +221,20 @@ in
       | SId s       -> L.build_load (lookup s) s builder
 
       | SMatrixLit (contents, rows, cols) ->
+        let content_ptr = build_int_pointer (list_to_array (get_values_list contents))
+        in
+        L.build_call init_int_matrix_f [| content_ptr; L.const_int i32_t rows ; L.const_int i32_t cols|] "init_int_matrix" builder
+        (*
+        in
+        ignore(List.map (fun f -> L.build_call fill_int_matrix [|mat; |]))
+        let rec fill_matrix matrix row col arr count=
+          if count == row * col - 1 then matrix
+          else fill_matrix (L.build_call fill_int_matrix_f [| matrix; L.const_int i32_t row; L.const_int i32_t col; L.const_int i32_t (Array.get arr count); L.const_int i32_t count|])
+              row col arr count + 1
+          in
+          fill_matrix create_empty_int_matrix rows cols contents' 0
+          *)
+        (*
         let rec expr_list = function
           [] -> []
           | hd::tl -> expr builder hd::expr_list tl
@@ -182,6 +243,7 @@ in
             in
             let m = L.build_call matrix_init_f [| L.const_int i32_t cols; L.const_int i32_t rows |] "matrix_init" builder
             in m
+          *)
 
     | SAssign (s, e) -> let e' = expr builder e in
                           ignore(L.build_store e' (lookup s) builder); e'
@@ -236,8 +298,14 @@ in
       | SCall ("printc", [e]) ->
     L.build_call printf_func [| char_format_str ; (expr builder e) |]
       "printf" builder
+
       | SCall ("printm", [e;e1;e2]) ->
-        L.build_call printMatrix_f [| (get_values_list e); (expr builder e1) ; (expr builder e2)|] "printm" builder
+        (*
+        match e with
+        (Matrix,  SMatrixLit (contents, rows, cols)) ->
+        let contents' = build_int_pointer (list_to_array (contents e)) in
+        *)
+        L.build_call printMatrix_f [| (expr builder e); (expr builder e1) ; (expr builder e2)|] "print_int_matrix" builder
         (* THIS DOES NOT WORK^ *)
 
       | SCall ("prints", [e]) ->
