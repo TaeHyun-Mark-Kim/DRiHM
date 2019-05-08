@@ -84,6 +84,9 @@ let translate (globals, functions) =
   let fill_int_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t; i32_t; i32_t|] in
   let fill_int_matrix_f = L.declare_function "fill_int_matrix" fill_int_matrix_t the_module in
 
+  let add_int_matrix_t = L.function_type int_mat_t [|int_mat_t; int_mat_t; i32_t; i32_t|] in
+  let add_int_matrix_f = L.declare_function "add_int_matrix" add_int_matrix_t the_module in
+
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
   let function_decls : (L.llvalue * sfunc_decl) StringMap.t =
@@ -155,38 +158,17 @@ let translate (globals, functions) =
       (* | SSliteral l ->  L.build_global_stringptr s "str" builder *)
       | SNoexpr     -> [L.const_int i32_t 0]
       | SLiteral i  -> [L.const_int i32_t i]
-      | SMatrixLit (contents, rows, cols) -> get_values_list contents
+      | SMatrixLit (contents, rows, cols) -> build_contents_list contents
     )
       (* | SId s       -> L.build_load (lookup s) s builder *)
 and
-   get_values_list mat_contents =
+   build_contents_list mat_contents =
      let rec go acc = function
       | [] -> acc
       | hd :: tl -> go (List.append acc (expr2 builder hd)) tl
       in
       go [] mat_contents
     in
-    let list_to_array l =
-      let rec put_element arr list_content index =
-        match list_content with
-        [] -> arr
-        | hd :: tl -> put_element (Array.set arr index hd; arr) tl (index + 1)
-        in
-        put_element (Array.make (List.length l) (List.hd l)) l 0
-    in
-    (*
-    let to_llvm_array arr =
-      let get_array_type arr =
-        L.array_type (L.type_of (Array.get arr 0)) (Array.length arr)
-      in
-      L.const_array (get_array_type arr) arr
-    in
-    *)
-    let build_int_pointer arr =
-      L.const_gep (Array.get arr 0) arr
-    in
-
-
     (* Construct code for an expression; return its value *)
     let rec expr builder ((_, e) : sexpr) = match e with
 	      SLiteral i  -> L.const_int i32_t i
@@ -199,7 +181,7 @@ and
       | SId s       -> L.build_load (lookup s) s builder
 
       | SMatrixLit (contents, rows, cols) ->
-          let matrix_contents = get_values_list contents
+          let matrix_contents = build_contents_list contents
           in
           let matrix = L.build_call init_int_matrix_f [|L.const_int i32_t rows; L.const_int i32_t cols|] "init_int_matrix" builder
           in
@@ -211,6 +193,17 @@ and
            *)
     | SAssign (s, e) -> let e' = expr builder e in
                           ignore(L.build_store e' (lookup s) builder); e'
+    | SBinop (((A.Matrix, SMatrixLit(contents1, row1, col1)) as e1), op, ((A.Matrix, SMatrixLit(contents2, row2, col2)) as e2))->
+      let e1' = expr builder e1
+      and e2' = expr builder e2 in
+      let dimension_check = (row1 = row2) && (col1 = col2)
+      in
+      (match op with
+      A.Add when dimension_check    ->
+        L.build_call add_int_matrix_f [| e1'; e2'; L.const_int i32_t row1 ; L.const_int i32_t col2|] "add_int_mat" builder
+      (*Remove below once all op are defined*)
+      |_ -> raise (Failure "dimension mismatch")
+      )
     | SBinop ((A.Float,_ ) as e1, op, e2) ->
 	  let e1' = expr builder e1
 	  and e2' = expr builder e2 in
@@ -228,7 +221,7 @@ and
 	  | A.And | A.Or ->
 	      raise (Failure "internal error: semant should have rejected and/or on float")
 	  ) e1' e2' "tmp" builder
-      | SBinop (e1, op, e2) ->
+    | SBinop (e1, op, e2) ->
 	  let e1' = expr builder e1
 	  and e2' = expr builder e2 in
 	  (match op with

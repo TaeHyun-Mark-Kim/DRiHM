@@ -82,9 +82,11 @@ char** init_char_matrix(char* source, int row, int col){
     return res;
 }
 
-int** add_int_matrix(int** m1, int** m2, int row, int col){
+int_matrix* add_int_matrix(int_matrix* matrix1, int_matrix* matrix2, int row, int col){
     //Define 2-D array as an array of pointers to pointers
     //where each points to an array of integers
+    int** m1 = matrix1->matrix_pointer;
+    int** m2 = matrix2->matrix_pointer;
     int** res = malloc(row * sizeof(int*));
     for(int i = 0; i < row; i++){
         res[i] = malloc(col * sizeof(int));
@@ -94,7 +96,9 @@ int** add_int_matrix(int** m1, int** m2, int row, int col){
             res[i][j] = m1[i][j] + m2[i][j];
         }
     }
-    return res;
+    int_matrix* result = malloc(sizeof(int_matrix));
+    result->matrix_pointer = res;
+    return result;
 }
 
 float** add_float_matrix(float** m1, float** m2, int row, int col){
