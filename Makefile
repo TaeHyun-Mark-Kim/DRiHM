@@ -27,7 +27,7 @@ microc.native : matrix.bc
 .PHONY : clean
 clean :
 	ocamlbuild -clean
-	rm -rf testall.log ocamlllvm *.diff *.ll *.o *.bc matrix
+	rm -rf testall.log ocamlllvm *.diff *.ll *.o *.bc *.exe *.out *.s matrix
 
 # Testing the "printbig" example
 

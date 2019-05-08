@@ -1,16 +1,43 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 
+struct int_matrix {
+    int** matrix_pointer;
+    int count;
+};
 
-typedef int** INT_MATRIX;
+typedef struct int_matrix int_matrix;
 
 void** init_empty_matrix(){
     void** res;
     return res;
 }
 
-int** init_int_matrix(int* source, int row, int col){
+int_matrix* init_int_matrix(int row, int col){
+    int** res = malloc(row * sizeof(int*));
+    for(int i = 0; i < row; i++){
+        res[i] = malloc(col * sizeof(int));
+    }
+    int_matrix* result = malloc(sizeof(int_matrix));
+    result->matrix_pointer = res;
+    result->count = 0;
+    return result;
+}
+
+int_matrix* fill_int_matrix(int_matrix* dest, int row_size, int col_size, int element){
+    int offset = dest->count;
+    int row = offset / col_size;
+    int col = offset % col_size;
+    dest->matrix_pointer[row][col] = element;
+    dest->count++;
+    return dest;
+}
+
+/*
+int_matrix* init_int_matrix(int* source, int row, int col){
+    fprintf(stdout, "%s\n", "function invoked");
     int** res = malloc(row * sizeof(int*));
     for(int i = 0; i < row; i++){
         res[i] = malloc(col * sizeof(int));
@@ -21,8 +48,11 @@ int** init_int_matrix(int* source, int row, int col){
             source++;
         }
     }
-    return res;
+    int_matrix* result = malloc(sizeof(int_matrix));
+    result->matrix_pointer = res;
+    return result;
 }
+*/
 
 float** init_float_matrix(float* source, int row, int col){
     float** res = malloc(row * sizeof(float*));
@@ -187,7 +217,8 @@ char** multiply_char_matrix(char** m1, char** m2, int m1_row, int m1_col, int m2
     return res;
 }
 
-void print_int_matrix(int** mat, int row, int col){
+void print_int_matrix(int_matrix* mat_ptr, int row, int col){
+    int** mat = mat_ptr->matrix_pointer;
     printf("%c", '[');
     for(int i = 0; i < row; i++){
       for(int j = 0; j < col; j++){
@@ -262,11 +293,19 @@ int int_det(int** m, int dim){
 	return d;
 }
 
+#ifdef BUILD_TEST
 int main(){
+
+    int a1[] = {1, 2, 3,4,5,6};
+    //int* a[1];
+    //a[0] = a1;
+    int_matrix* res = init_int_matrix(2, 3);
+    int a1_length = sizeof(a1) / sizeof(int);
+    for(int i = 0; i < a1_length; i++){
+      fill_int_matrix(res, 2, 3, a1[i]);
+    }
+    print_int_matrix(res, 2, 3);
     /*
-    int a1[] = {1, 2, 3};
-    int* a[1];
-    a[0] = a1;
     int b1[] = {1, 4, 7};
     int b2[] = {2, 5, 8};
     int b3[] = {3, 6, 9};
@@ -308,3 +347,4 @@ int main(){
     printf("%d\n", int_det(res9, 5));
     */
 }
+#endif

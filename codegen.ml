@@ -35,13 +35,10 @@ let translate (globals, functions) =
   and i1_t       = L.i1_type     context
   and float_t    = L.double_type context
   and void_t     = L.void_type   context
-  (*and int_array_t = L.pointer_type (L.i32_type context)*)
-  and int_array_t = L.i32_type    context
-  and mat_t   = L.pointer_type (match L.type_by_name llmbit "INT_MATRIX" with (******)
+  and int_ptr_t  = L.pointer_type (L.i32_type context)
+  and int_mat_t   = L.pointer_type (match L.type_by_name llmbit "struct.int_matrix" with (******)
       None -> raise (Failure "Matrix type is missing in C")
     | Some t -> t)
-  (*and int_matrix_t = L.pointer_type (L.pointer_type (L.i32_type context))*)
-  and int_matrix_t = L.i32_type    context
   in
   (* Return the LLVM type for a MicroC type *)
   let ltype_of_typ = function
@@ -51,8 +48,7 @@ let translate (globals, functions) =
     | A.Char -> i8_t
     (* | A.String -> string_t *)
     | A.Void  -> void_t
-    (*Need to change later*)
-    | A.Matrix -> int_matrix_t
+    | A.Matrix -> int_mat_t
   in
 
   (* Create a map of global variables after creating each *)
@@ -76,17 +72,16 @@ let translate (globals, functions) =
   let printbig_func : L.llvalue =
       L.declare_function "printbig" printbig_t the_module in *)
 
-  let printMatrix_t = L.function_type i32_t [| mat_t; i32_t ; i32_t |] in
-  let printMatrix_f = L.declare_function "print_int_matrix" printMatrix_t the_module in
+  let print_int_matrix_t = L.function_type i32_t [| int_mat_t; i32_t ; i32_t |] in
+  let print_int_matrix_f = L.declare_function "print_int_matrix" print_int_matrix_t the_module in
 
-  (*
-  let matrix_init_t = L.function_type matrix_t [|i32_t ; i32_t|] in
-  let matrix_init_f = L.declare_function "initMatrix_CG" matrix_init_t the_module in
-  *)
-  let init_int_matrix_t = L.function_type mat_t [|int_matrix_t; i32_t; i32_t|] in
+  let sample_print_t = L.function_type i32_t [||] in
+  let sample_print_f = L.declare_function "sample_print" sample_print_t the_module in
+
+  let init_int_matrix_t = L.function_type int_mat_t [|(*int_ptr_t;*) i32_t ; i32_t|] in
   let init_int_matrix_f = L.declare_function "init_int_matrix" init_int_matrix_t the_module in
 
-  let fill_int_matrix_t = L.function_type mat_t [|mat_t; i32_t; i32_t; i32_t; i32_t|] in
+  let fill_int_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t; i32_t; i32_t|] in
   let fill_int_matrix_f = L.declare_function "fill_int_matrix" fill_int_matrix_t the_module in
 
   (* Define each function (arguments and return type) so we can
@@ -143,14 +138,14 @@ let translate (globals, functions) =
                    with Not_found -> StringMap.find n global_vars
     in
     (*
-    let get_values_list2 ll : L.llvalue list  =
+    let get_values_list2 mat_contents =
       let rec go acc = function
-        | [] -> List.rev acc
-        | l :: r -> go (List.rev_append l acc) r
+        | [] -> acc
+        | hd :: tl -> go (List.append acc (expr2 builder hd)) tl
           in
-          go [] ll
+          go [] mat_contents
     in
-    *)
+  *)
     let rec expr2 builder ((_, e) : sexpr) = (match e with
        SLiteral i  ->  [L.const_int i32_t i]
       | SBoolLit b  -> [L.const_int i1_t (if b then 1 else 0)]
@@ -159,13 +154,12 @@ let translate (globals, functions) =
       | SCliteral l -> [L.const_int i8_t (int_of_char l)]
       (* | SSliteral l ->  L.build_global_stringptr s "str" builder *)
       | SNoexpr     -> [L.const_int i32_t 0]
-      (* | SId s       -> L.build_load (lookup s) s builder *)
-      (*dummy variable, mat shouldn't implement string type but for the sake of ocaml compiler*)
       | SLiteral i  -> [L.const_int i32_t i]
       | SMatrixLit (contents, rows, cols) -> get_values_list contents
     )
-    and
-    get_values_list mat_contents =
+      (* | SId s       -> L.build_load (lookup s) s builder *)
+and
+   get_values_list mat_contents =
      let rec go acc = function
       | [] -> acc
       | hd :: tl -> go (List.append acc (expr2 builder hd)) tl
@@ -182,32 +176,16 @@ let translate (globals, functions) =
     in
     (*
     let to_llvm_array arr =
-      L.const_array (L.type_of (Array.get arr 0)) arr
+      let get_array_type arr =
+        L.array_type (L.type_of (Array.get arr 0)) (Array.length arr)
+      in
+      L.const_array (get_array_type arr) arr
     in
     *)
     let build_int_pointer arr =
       L.const_gep (Array.get arr 0) arr
     in
 
-     (*
-      match m with
-      | SMatrixLit (contents, rows, cols) ->
-      let rec expr_list = function
-        [] -> []
-        | hd::tl -> expr2 builder hd::expr_list tl
-          in
-          let contents' = expr_list contents
-          in
-          get_values_list2 contents'
-
-      | _ -> None
-      in
-      *)
-(*
-      let to_list m =
-
-        let build_list (expr_list : sexpr list) acc = match List.hd expr_list with
-          *)
 
     (* Construct code for an expression; return its value *)
     let rec expr builder ((_, e) : sexpr) = match e with
@@ -221,30 +199,16 @@ let translate (globals, functions) =
       | SId s       -> L.build_load (lookup s) s builder
 
       | SMatrixLit (contents, rows, cols) ->
-        let content_ptr = build_int_pointer (list_to_array (get_values_list contents))
+          let matrix_contents = get_values_list contents
+          in
+          let matrix = L.build_call init_int_matrix_f [|L.const_int i32_t rows; L.const_int i32_t cols|] "init_int_matrix" builder
+          in
+          ignore(List.map (fun elt -> L.build_call fill_int_matrix_f [|matrix; L.const_int i32_t rows; L.const_int i32_t cols; elt|] "fill_int_matrix" builder) matrix_contents); matrix
+          (*
+          let content_ptr = build_int_pointer (list_to_array (get_values_list contents))
         in
         L.build_call init_int_matrix_f [| content_ptr; L.const_int i32_t rows ; L.const_int i32_t cols|] "init_int_matrix" builder
-        (*
-        in
-        ignore(List.map (fun f -> L.build_call fill_int_matrix [|mat; |]))
-        let rec fill_matrix matrix row col arr count=
-          if count == row * col - 1 then matrix
-          else fill_matrix (L.build_call fill_int_matrix_f [| matrix; L.const_int i32_t row; L.const_int i32_t col; L.const_int i32_t (Array.get arr count); L.const_int i32_t count|])
-              row col arr count + 1
-          in
-          fill_matrix create_empty_int_matrix rows cols contents' 0
-          *)
-        (*
-        let rec expr_list = function
-          [] -> []
-          | hd::tl -> expr builder hd::expr_list tl
-            in
-            let contents' = expr_list contents
-            in
-            let m = L.build_call matrix_init_f [| L.const_int i32_t cols; L.const_int i32_t rows |] "matrix_init" builder
-            in m
-          *)
-
+           *)
     | SAssign (s, e) -> let e' = expr builder e in
                           ignore(L.build_store e' (lookup s) builder); e'
     | SBinop ((A.Float,_ ) as e1, op, e2) ->
@@ -286,7 +250,7 @@ let translate (globals, functions) =
 	  (match op with
 	    A.Neg when t = A.Float -> L.build_fneg
 	  | A.Neg                  -> L.build_neg
-          | A.Not                  -> L.build_not) e' "tmp" builder
+    | A.Not                  -> L.build_not) e' "tmp" builder
       | SCall ("print", [e]) | SCall ("printb", [e]) ->
 	  L.build_call printf_func [| int_format_str ; (expr builder e) |]
 	    "printf" builder
@@ -298,15 +262,9 @@ let translate (globals, functions) =
       | SCall ("printc", [e]) ->
     L.build_call printf_func [| char_format_str ; (expr builder e) |]
       "printf" builder
-
       | SCall ("printm", [e;e1;e2]) ->
-        (*
-        match e with
-        (Matrix,  SMatrixLit (contents, rows, cols)) ->
-        let contents' = build_int_pointer (list_to_array (contents e)) in
-        *)
-        L.build_call printMatrix_f [| (expr builder e); (expr builder e1) ; (expr builder e2)|] "print_int_matrix" builder
-        (* THIS DOES NOT WORK^ *)
+        L.build_call print_int_matrix_f [| (expr builder e); (expr builder e1) ; (expr builder e2)|] "printm" builder
+        (*L.build_call sample_print_f [||] "printm" builder*)
 
       | SCall ("prints", [e]) ->
     L.build_call printf_func [| string_format_str ; (expr builder e) |]
