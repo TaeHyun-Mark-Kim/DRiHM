@@ -52,6 +52,7 @@ let check (globals, functions) =
                                ("printc", [Char], Void);
                                ("printm", [Matrix; Int; Int], Void);
                                (*Assigned separate name for printing string for now*)
+                               ("det", [Matrix; Int], Int);
                                ("prints", [String], Void);
 			                         ("printbig", [Int], Void) ]
   in

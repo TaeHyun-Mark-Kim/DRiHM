@@ -131,7 +131,11 @@ char** add_char_matrix(char** m1, char** m2, int row, int col){
     return res;
 }
 
-int** subtract_int_matrix(int** m1, int** m2, int row, int col){
+int_matrix* subtract_int_matrix(int_matrix* matrix1, int_matrix* matrix2, int row, int col){
+    //Define 2-D array as an array of pointers to pointers
+    //where each points to an array of integers
+    int** m1 = matrix1->matrix_pointer;
+    int** m2 = matrix2->matrix_pointer;
     int** res = malloc(row * sizeof(int*));
     for(int i = 0; i < row; i++){
         res[i] = malloc(col * sizeof(int));
@@ -141,7 +145,9 @@ int** subtract_int_matrix(int** m1, int** m2, int row, int col){
             res[i][j] = m1[i][j] - m2[i][j];
         }
     }
-    return res;
+    int_matrix* result = malloc(sizeof(int_matrix));
+    result->matrix_pointer = res;
+    return result;
 }
 
 float** subtract_float_matrix(float** m1, float** m2, int row, int col){
@@ -170,7 +176,9 @@ char** subtract_char_matrix(char** m1, char** m2, int row, int col){
     return res;
 }
 
-int** multiply_int_matrix(int** m1, int** m2, int m1_row, int m1_col, int m2_col){
+int_matrix* multiply_int_matrix(int_matrix* matrix1, int_matrix* matrix2, int m1_row, int m1_col, int m2_col){
+    int** m1 = matrix1->matrix_pointer;
+    int** m2 = matrix2->matrix_pointer;
     int** res = malloc(m1_row * sizeof(int*));
     for(int i = 0; i < m1_row; i++){
       res[i] = malloc(m2_col * sizeof(int));
@@ -184,7 +192,9 @@ int** multiply_int_matrix(int** m1, int** m2, int m1_row, int m1_col, int m2_col
         res[i][j] = val;
       }
     }
-    return res;
+    int_matrix* result = malloc(sizeof(int_matrix));
+    result->matrix_pointer = res;
+    return result;
 }
 
 float** multiply_float_matrix(float** m1, float** m2, int m1_row, int m1_col, int m2_col){
@@ -280,7 +290,7 @@ int** int_cofactorM(int** m, int dim, int r, int c){
   return res;
 }
 
-int int_det(int** m, int dim){
+int int_det_helper(int** m, int dim){
 	int d = 0;
   if (dim == 0){
     return 1;
@@ -292,9 +302,14 @@ int int_det(int** m, int dim){
 		return ( (m[0][0] * m[1][1]) - (m[1][0] * m[0][1]));
 	}
 	for(int i = 0; i < dim; i++){
-    d+= ((int) pow(-1.0, (double) i)) * m[0][i] * int_det(int_cofactorM(m, dim, 0, i), dim - 1);
+    d+= ((int) pow(-1.0, (double) i)) * m[0][i] * int_det_helper(int_cofactorM(m, dim, 0, i), dim - 1);
 	}
 	return d;
+}
+
+int int_det(int_matrix* matrix, int dim){
+  int** m = matrix->matrix_pointer;
+  return int_det_helper(m, dim);
 }
 
 #ifdef BUILD_TEST

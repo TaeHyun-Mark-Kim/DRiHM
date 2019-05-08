@@ -87,6 +87,14 @@ let translate (globals, functions) =
   let add_int_matrix_t = L.function_type int_mat_t [|int_mat_t; int_mat_t; i32_t; i32_t|] in
   let add_int_matrix_f = L.declare_function "add_int_matrix" add_int_matrix_t the_module in
 
+  let subtract_int_matrix_t = L.function_type int_mat_t [|int_mat_t; int_mat_t; i32_t; i32_t|] in
+  let subtract_int_matrix_f = L.declare_function "subtract_int_matrix" subtract_int_matrix_t the_module in
+
+  let multiply_int_matrix_t = L.function_type int_mat_t [|int_mat_t; int_mat_t; i32_t; i32_t; i32_t|] in
+  let multiply_int_matrix_f = L.declare_function "multiply_int_matrix" multiply_int_matrix_t the_module in
+
+  let determinant_int_matrix_t = L.function_type i32_t [|int_mat_t; i32_t|] in
+  let determinant_int_matrix_f = L.declare_function "int_det" determinant_int_matrix_t the_module in
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
   let function_decls : (L.llvalue * sfunc_decl) StringMap.t =
@@ -198,11 +206,16 @@ and
       and e2' = expr builder e2 in
       let dimension_check = (row1 = row2) && (col1 = col2)
       in
+      let mult_dimension_check = (col1 = row2)
+      in
       (match op with
       A.Add when dimension_check    ->
-        L.build_call add_int_matrix_f [| e1'; e2'; L.const_int i32_t row1 ; L.const_int i32_t col2|] "add_int_mat" builder
-      (*Remove below once all op are defined*)
-      |_ -> raise (Failure "dimension mismatch")
+        L.build_call add_int_matrix_f [| e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col2|] "add_int_mat" builder
+    | A.Sub when dimension_check    ->
+        L.build_call subtract_int_matrix_f [| e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col2|] "subtract_int_mat" builder
+    | A.Mult when mult_dimension_check ->
+        L.build_call multiply_int_matrix_f [|e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1; L.const_int i32_t col2;|] "multiply_int_mat" builder
+    | _ -> raise (Failure "dimension mismatch")
       )
     | SBinop ((A.Float,_ ) as e1, op, e2) ->
 	  let e1' = expr builder e1
@@ -257,8 +270,9 @@ and
       "printf" builder
       | SCall ("printm", [e;e1;e2]) ->
         L.build_call print_int_matrix_f [| (expr builder e); (expr builder e1) ; (expr builder e2)|] "printm" builder
-        (*L.build_call sample_print_f [||] "printm" builder*)
-
+      | SCall ("det", [e;e1]) ->
+        (*need to add dimension checking*)
+        L.build_call determinant_int_matrix_f [|(expr builder e); (expr builder e1)|] "int_det" builder
       | SCall ("prints", [e]) ->
     L.build_call printf_func [| string_format_str ; (expr builder e) |]
       "printf" builder
