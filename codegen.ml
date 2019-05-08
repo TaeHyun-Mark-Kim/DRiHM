@@ -131,7 +131,7 @@ let translate (globals, functions) =
                    with Not_found -> StringMap.find n global_vars
     in
 
-    let get_values_list2 ll : L.llvalue =
+    let get_values_list2 ll : L.llvalue list =
       let rec go acc = function
         | [] -> List.rev acc
         | l :: r -> go (List.rev_append l acc) r

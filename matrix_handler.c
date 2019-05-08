@@ -76,6 +76,17 @@ void print_int_matrix(int** mat, int row, int col){
     // printf("%c", ']');
 }
 
+void display(matrix* input) {
+    int row = input->num_rows;
+    int col = input->num_cols;
+    for(int i = 0; i<row; i++) {
+        for(int j=0; j<col; j++) {
+            printf(" %d", input->matrixAddr[i][j]);
+        }
+        printf("\n");
+    }
+}
+
 #ifdef BUILD_TEST
 int main(int argc,char** argv) {
   //run tests of each function
