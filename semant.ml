@@ -50,9 +50,9 @@ let check (globals, functions) =
 			                         ("printb", [Bool], Void);
 			                         ("printf", [Float], Void);
                                ("printc", [Char], Void);
-                               ("printm", [Matrix; Int; Int], Void);
+                               ("printm", [Matrix], Void);
                                (*Assigned separate name for printing string for now*)
-                               ("det", [Matrix; Int], Int);
+                               ("det", [Matrix], Int);
                                ("prints", [String], Void);
 			                         ("printbig", [Int], Void) ]
   in

@@ -133,6 +133,13 @@ let translate (globals, functions) =
 	in StringMap.add n local_var m
       in
 (*********)
+      (*let add_assign (tp, vName, ex) =
+        match ex with
+        SNoexpr -> (tp, vName)
+        | _ ->
+        let e' = expr builder e in
+          ignore(L.build_store e' (lookup s) builder);
+      *)
       let sformals = List.map (fun (tp, vName, _) -> (tp, vName)) fdecl.sformals in
       let slocals= List.map (fun (tp, vName, _) -> (tp, vName)) fdecl.slocals in
 (*********)
@@ -148,15 +155,24 @@ let translate (globals, functions) =
     let lookup n = try StringMap.find n local_vars
                    with Not_found -> StringMap.find n global_vars
     in
-    (*
-    let get_values_list2 mat_contents =
-      let rec go acc = function
-        | [] -> acc
-        | hd :: tl -> go (List.append acc (expr2 builder hd)) tl
-          in
-          go [] mat_contents
+    (*Map of matrix pointers to row and col values*)
+    let temp_matrix_map =  ref StringMap.empty
     in
-  *)
+    (*Add row and col dimension information of a newly created matrix*)
+    let add_temp_matrix mat_ptr rows cols =
+      temp_matrix_map := StringMap.add mat_ptr (rows, cols) !temp_matrix_map
+    in
+    let lookup_dim mat_ptr =
+      StringMap.find (L.value_name mat_ptr) !temp_matrix_map
+    in
+    let extract_row mat = match (lookup_dim mat) with
+    (row, _) -> row
+    | _ -> raise(Failure "Matrix missing dimension infomation")
+    in
+    let extract_col mat = match (lookup_dim mat) with
+    (_, col) -> col
+    | _ -> raise(Failure "Matrix missing dimension information")
+    in
     let rec expr2 builder ((_, e) : sexpr) = (match e with
        SLiteral i  ->  [L.const_int i32_t i]
       | SBoolLit b  -> [L.const_int i1_t (if b then 1 else 0)]
@@ -193,14 +209,11 @@ and
           in
           let matrix = L.build_call init_int_matrix_f [|L.const_int i32_t rows; L.const_int i32_t cols|] "init_int_matrix" builder
           in
+          ignore(add_temp_matrix (L.value_name matrix) rows cols);
           ignore(List.map (fun elt -> L.build_call fill_int_matrix_f [|matrix; L.const_int i32_t rows; L.const_int i32_t cols; elt|] "fill_int_matrix" builder) matrix_contents); matrix
-          (*
-          let content_ptr = build_int_pointer (list_to_array (get_values_list contents))
-        in
-        L.build_call init_int_matrix_f [| content_ptr; L.const_int i32_t rows ; L.const_int i32_t cols|] "init_int_matrix" builder
-           *)
     | SAssign (s, e) -> let e' = expr builder e in
                           ignore(L.build_store e' (lookup s) builder); e'
+    (*
     | SBinop (((A.Matrix, SMatrixLit(contents1, row1, col1)) as e1), op, ((A.Matrix, SMatrixLit(contents2, row2, col2)) as e2))->
       let e1' = expr builder e1
       and e2' = expr builder e2 in
@@ -217,6 +230,7 @@ and
         L.build_call multiply_int_matrix_f [|e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1; L.const_int i32_t col2;|] "multiply_int_mat" builder
     | _ -> raise (Failure "dimension mismatch")
       )
+    *)
     | SBinop ((A.Float,_ ) as e1, op, e2) ->
 	  let e1' = expr builder e1
 	  and e2' = expr builder e2 in
@@ -237,6 +251,34 @@ and
     | SBinop (e1, op, e2) ->
 	  let e1' = expr builder e1
 	  and e2' = expr builder e2 in
+    if (L.type_of e1' = int_mat_t && L.type_of e2' = int_mat_t) then
+      let row1 = extract_row e1'
+      in
+      let col1 = extract_col e1'
+      in
+      let row2 = extract_row e2'
+      in
+      let col2 = extract_col e2'
+      in
+      let dimension_check = (row1 = row2) && (col1 = col2)
+      in
+      let mult_dimension_check = (col1 = row2)
+      in
+      match op with
+      A.Add  when dimension_check ->
+        let matrix = L.build_call add_int_matrix_f [| e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1|] "add_int_mat" builder
+        in
+        ignore(add_temp_matrix (L.value_name matrix) row1 col1); matrix
+    | A.Sub when dimension_check    ->
+        let matrix = L.build_call subtract_int_matrix_f [| e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1|] "subtract_int_mat" builder
+        in
+        ignore(add_temp_matrix (L.value_name matrix) row1 col1); matrix
+    | A.Mult when mult_dimension_check ->
+        let matrix = L.build_call multiply_int_matrix_f [|e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1; L.const_int i32_t col2|] "multiply_int_mat" builder
+        in
+        ignore(add_temp_matrix (L.value_name matrix) row1 col2); matrix
+    |_ -> raise (Failure "Matrix dimenstion mismatch")
+    else
 	  (match op with
 	    A.Add     -> L.build_add
 	  | A.Sub     -> L.build_sub
@@ -268,11 +310,25 @@ and
       | SCall ("printc", [e]) ->
     L.build_call printf_func [| char_format_str ; (expr builder e) |]
       "printf" builder
-      | SCall ("printm", [e;e1;e2]) ->
-        L.build_call print_int_matrix_f [| (expr builder e); (expr builder e1) ; (expr builder e2)|] "printm" builder
-      | SCall ("det", [e;e1]) ->
+      | SCall ("printm", [e]) ->
+        let e' = expr builder e
+        in
+        let rows = extract_row e'
+        in
+        let cols = extract_col e'
+        in
+        L.build_call print_int_matrix_f [| (e'); ( L.const_int i32_t rows); (L.const_int i32_t cols)|] "printm" builder
+      | SCall ("det", [e]) ->
         (*need to add dimension checking*)
-        L.build_call determinant_int_matrix_f [|(expr builder e); (expr builder e1)|] "int_det" builder
+        let e' = expr builder e
+        in
+        let rows = extract_row e'
+        in
+        let cols = extract_col e'
+        in
+        if rows = cols then
+        L.build_call determinant_int_matrix_f [|(e'); (L.const_int i32_t rows)|] "int_det" builder
+        else raise(Failure "Determinant can't be calculated for a matrix that doesn't have eqaul number of rows and columns")
       | SCall ("prints", [e]) ->
     L.build_call printf_func [| string_format_str ; (expr builder e) |]
       "printf" builder
