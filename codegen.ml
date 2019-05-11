@@ -35,6 +35,7 @@ let translate (globals, functions) =
   and i1_t       = L.i1_type     context
   and float_t    = L.double_type context
   and void_t     = L.void_type   context
+  and string_t   = L.pointer_type (L.i8_type context)
   and int_ptr_t  = L.pointer_type (L.i32_type context)
   and int_mat_t   = L.pointer_type (match L.type_by_name llmbit "struct.int_matrix" with (******)
       None -> raise (Failure "Matrix type is missing in C")
@@ -184,13 +185,23 @@ let translate (globals, functions) =
     let lookup_mat s =
       StringMap.find s !var_matrix_map
     in
+    (*Map of string pointers to strings*)
+    let temp_string_map = ref StringMap.empty
+    in
+    let add_temp_string string_ptr string =
+      temp_string_map := StringMap.add (L.value_name string_ptr) string !temp_string_map;
+    in
+    let lookup_string string_ptr =
+      StringMap.find (L.value_name string_ptr) !temp_string_map
+    in
+
     let rec expr2 builder ((_, e) : sexpr) = (match e with
        SLiteral i  ->  [L.const_int i32_t i]
       | SBoolLit b  -> [L.const_int i1_t (if b then 1 else 0)]
       | SFliteral l -> [L.const_float_of_string float_t l]
       (*Turn character into integer representation*)
       | SCliteral l -> [L.const_int i8_t (int_of_char l)]
-      (* | SSliteral l ->  L.build_global_stringptr s "str" builder *)
+      | SSliteral l -> [L.build_global_stringptr l "string" builder]
       | SNoexpr     -> [L.const_int i32_t 0]
       | SLiteral i  -> [L.const_int i32_t i]
       | SMatrixLit (contents, rows, cols) -> build_contents_list contents
@@ -211,7 +222,10 @@ and
       | SFliteral l -> L.const_float_of_string float_t l
       (*Turn character into integer representation*)
       | SCliteral l -> L.const_int i8_t (int_of_char l)
-      (* | SSliteral l ->  L.build_global_stringptr s "str" builder *)
+      | SSliteral l ->
+        let string_ptr = L.build_global_stringptr l "string" builder
+        in
+        ignore(add_temp_string string_ptr l); string_ptr
       | SNoexpr     -> L.const_int i32_t 0
       | SId s       ->
         if t = Matrix then lookup_mat s
@@ -247,6 +261,22 @@ and
 	  | A.And | A.Or ->
 	      raise (Failure "internal error: semant should have rejected and/or on float")
 	  ) e1' e2' "tmp" builder
+    (*
+    | SBinop ((A.String, SSliteral s1), op, (A.String, SSliteral s2)) ->
+   (match op with
+     A.Add ->
+       (*Function to add 2 Ocaml strings*)
+       let buffer_to_string b s1 s2 =
+         Buffer.add_string b s1;
+         Buffer.add_string b s2;
+         Buffer.contents b
+       in
+       let add_strings s1 s2 =
+         buffer_to_string (Buffer.create 80) s1 s2
+       in
+       L.build_global_stringptr (add_strings s1 s2) "str" builder
+     | _ -> raise (Failure "internal error: the operation is not supported for String types"))
+    *)
     | SBinop (e1, op, e2) ->
 	  let e1' = expr builder e1
 	  and e2' = expr builder e2 in
@@ -276,7 +306,23 @@ and
         let matrix = L.build_call multiply_int_matrix_f [|e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1; L.const_int i32_t col2|] "multiply_int_mat" builder
         in
         ignore(add_temp_matrix  matrix row1 col2); matrix
-    |_ -> raise (Failure "Matrix dimenstion mismatch")
+    |_ -> raise (Failure "Matrix dimention mismatch")
+    else if (L.type_of e1' = string_t && L.type_of e2' = string_t) then
+      match op with
+      A.Add ->
+        let s1 = lookup_string e1'
+        in
+        let s2 = lookup_string e2'
+        in
+        let buffer_to_string b =
+          Buffer.add_string b s1;
+          Buffer.add_string b s2;
+          Buffer.contents b
+        in
+        let string_ptr = L.build_global_stringptr (buffer_to_string (Buffer.create 80)) "string" builder
+        in
+        ignore(add_temp_string string_ptr); string_ptr
+      | _ -> raise (Failure "Unsupported operation for String types")
     else
 	  (match op with
 	    A.Add     -> L.build_add

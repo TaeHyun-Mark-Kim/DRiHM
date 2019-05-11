@@ -69,7 +69,7 @@ let rec string_of_expr = function
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | Cliteral(l) -> Char.escaped l
-  | Sliteral(s) -> "\"" ^ s ^ "\""
+  | Sliteral(l) -> l
   | MatrixLit(l) -> "matrixLit[" ^ String.concat ", " (List.map string_of_expr l) ^ "]"
   | Id(s) -> s
   | Binop(e1, o, e2) ->

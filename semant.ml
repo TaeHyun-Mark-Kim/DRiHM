@@ -165,6 +165,8 @@ let check (globals, functions) =
             Add | Sub | Mult | Div when same && t1 = Int   -> Int
           | Add | Sub | Mult | Div when same && t1 = Float -> Float
           | Add | Sub | Mult when same && t1 = Matrix      -> Matrix
+          | Add when same && t1 = String                   -> String
+          | Add | Sub when same && t1 = Char               -> Char
           | Equal | Neq            when same               -> Bool
           | Less | Leq | Greater | Geq
                      when same && (t1 = Int || t1 = Float) -> Bool
