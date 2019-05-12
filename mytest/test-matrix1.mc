@@ -1,6 +1,7 @@
 int main(){
-    matrix a;
-    a = [[1]];
-    printm(a,1,1);
-    return 0;
+
+  printm([[1,2,3,4],[5,6,7,8]],2,4);
+  
+
+
 }

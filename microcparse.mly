@@ -10,9 +10,10 @@ open Ast
 %token RETURN IF ELSE FOR WHILE INT BOOL FLOAT CHAR STRING VOID
 %token <int> LITERAL
 %token <bool> BLIT
+%token <float> FLIT
 %token <char> CLIT
 %token <string> SLIT
-%token <string> ID FLIT
+%token <string> ID 
 %token EOF
 
 %start program

@@ -11,7 +11,7 @@ type typ = Int | Bool | Float | Char | String | Void | Matrix
 
 type expr =
     Literal of int
-  | Fliteral of string
+  | Fliteral of float
   | BoolLit of bool
   | Cliteral of char
   | Sliteral of string
@@ -65,7 +65,7 @@ let string_of_uop = function
 
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
-  | Fliteral(l) -> l
+  | Fliteral(l) -> string_of_float l
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | Cliteral(l) -> Char.escaped l

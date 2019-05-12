@@ -4,7 +4,7 @@ open Ast
 open Sast
 
 module StringMap = Map.Make(String)
-
+module P= Printf
 (* Semantic checking of the AST. Returns an SAST if successful,
    throws an exception if something is wrong.
 
@@ -115,6 +115,13 @@ let check (globals, functions) =
       with Not_found -> raise (Failure ("undeclared identifier " ^ s))
     in
 
+    let type_of_mat e =
+      match e with
+          Literal  l   -> "int"
+        | Fliteral l -> "float"
+        | _ -> "None"
+     in
+
     (* Return a semantically-checked expression, i.e., with a type *)
     let rec expr = function
         Literal  l -> (Int, SLiteral l)
@@ -124,6 +131,7 @@ let check (globals, functions) =
       | Sliteral l -> (String, SSliteral l)
       | MatrixLit l ->
           let d = get_dims (MatrixLit l) in
+
           let rec all_match = function
             [] -> ignore()
             | hd::tl -> if tl != [] then
@@ -132,10 +140,15 @@ let check (globals, functions) =
                         else ignore()
           in
           all_match l;
-          if List.length d > 2 then (Matrix, SMatrixLit ((List.map expr l), List.hd d, List.hd (List.tl d)))
-          else if List.length d = 2 then (Matrix, SMatrixLit ( (List.map expr (flatten (List.tl d) l)), List.hd d, List.hd (List.tl d)))
-          else if List.length d = 1 then (Matrix, SMatrixLit ( (List.map expr (flatten (List.tl d) l)), List.hd d, 1))
-          else (Matrix, SMatrixLit ( (List.map expr l), 0,0))
+          let ty =
+            ( match l with
+            [] -> "NONE"
+            | hd::tl -> type_of_mat hd) in
+          Printf.printf "Semnat Debug: %s\n" ty;
+          if List.length d > 2 then (Matrix, SMatrixLit ((List.map expr l), List.hd d, List.hd (List.tl d), ty ))
+          else if List.length d = 2 then (Matrix, SMatrixLit ( (List.map expr (flatten (List.tl d) l)), List.hd d, List.hd (List.tl d), ty ))
+          else if List.length d = 1 then (Matrix, SMatrixLit ( (List.map expr (flatten (List.tl d) l)), List.hd d, 1,  ty ))
+          else (Matrix, SMatrixLit ( (List.map expr l), 0,0,  ty) )
 
       | Noexpr     -> (Void, SNoexpr)
       | Id s       -> (type_of_identifier s, SId s)
