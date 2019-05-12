@@ -47,7 +47,7 @@ let translate (globals, functions) =
     | A.Bool  -> i1_t
     | A.Float -> float_t
     | A.Char -> i8_t
-    (* | A.String -> string_t *)
+    | A.String -> string_t
     | A.Void  -> void_t
     | A.Matrix -> int_mat_t
   in
@@ -156,6 +156,7 @@ let translate (globals, functions) =
     let lookup n = try StringMap.find n local_vars
                    with Not_found -> StringMap.find n global_vars
     in
+
     (*Map of matrix pointers to row and col values*)
     let temp_matrix_map =  ref StringMap.empty
     in
@@ -185,14 +186,26 @@ let translate (globals, functions) =
     let lookup_mat s =
       StringMap.find s !var_matrix_map
     in
+
     (*Map of string pointers to strings*)
     let temp_string_map = ref StringMap.empty
     in
     let add_temp_string string_ptr string =
-      temp_string_map := StringMap.add (L.value_name string_ptr) string !temp_string_map;
+      temp_string_map := StringMap.add (L.string_of_llvalue string_ptr) string !temp_string_map;
     in
     let lookup_string string_ptr =
-      StringMap.find (L.value_name string_ptr) !temp_string_map
+      StringMap.find (L.string_of_llvalue string_ptr) !temp_string_map
+    in
+
+    (*Map of string variables to string pointers*)
+    let var_string_map = ref StringMap.empty
+    in
+    (*Called when new assignment is made for a matrix*)
+    let add_var_string v string_ptr =
+      var_string_map := StringMap.add v string_ptr !var_string_map
+    in
+    let lookup_string_ptr v =
+      StringMap.find v !var_string_map
     in
 
     let rec expr2 builder ((_, e) : sexpr) = (match e with
@@ -225,10 +238,12 @@ and
       | SSliteral l ->
         let string_ptr = L.build_global_stringptr l "string" builder
         in
+        (*L.set_value_name l string_ptr;*)
         ignore(add_temp_string string_ptr l); string_ptr
       | SNoexpr     -> L.const_int i32_t 0
       | SId s       ->
         if t = Matrix then lookup_mat s
+        else if t = String then lookup_string_ptr s
         else
         L.build_load (lookup s) s builder
       | SMatrixLit (contents, rows, cols) ->
@@ -242,6 +257,7 @@ and
       let e' = expr builder e
       in
       if L.type_of e' = int_mat_t then (ignore(add_var_matrix s e'); e')
+      else if L.type_of e' = string_t then (ignore(add_var_string s e'); e')
       else
       (ignore(L.build_store e' (lookup s) builder); e')
     | SBinop ((A.Float,_ ) as e1, op, e2) ->
@@ -306,7 +322,7 @@ and
         let matrix = L.build_call multiply_int_matrix_f [|e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1; L.const_int i32_t col2|] "multiply_int_mat" builder
         in
         ignore(add_temp_matrix  matrix row1 col2); matrix
-    |_ -> raise (Failure "Matrix dimention mismatch")
+    |_ -> raise (Failure "Matrix dimension mismatch")
     else if (L.type_of e1' = string_t && L.type_of e2' = string_t) then
       match op with
       A.Add ->
@@ -319,9 +335,12 @@ and
           Buffer.add_string b s2;
           Buffer.contents b
         in
-        let string_ptr = L.build_global_stringptr (buffer_to_string (Buffer.create 80)) "string" builder
+        let new_string = buffer_to_string (Buffer.create 80)
         in
-        ignore(add_temp_string string_ptr); string_ptr
+        let string_ptr = L.build_global_stringptr new_string "string" builder
+        in
+        (*L.set_value_name new_string string_ptr;*)
+        ignore(add_temp_string string_ptr new_string); string_ptr
       | _ -> raise (Failure "Unsupported operation for String types")
     else
 	  (match op with
