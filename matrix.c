@@ -259,12 +259,9 @@ char** init_char_matrix(char* source, int row, int col){
 //     return res;
 // }
 
+
 void print_int_matrix(matrix* mat_ptr, int row, int col){
-  // struct matrix mat;
-    int **mat = mat_ptr->matrix_pointer;
-  //   //  int** mat = malloc(sizeof(matrix));
-  // mat.matrix_pointer =
-    // // memset(mat, (mat_ptr->matrix_pointer), sizeof((mat_ptr->matrix_pointer)[row][col])*row*col );
+    int** mat = mat_ptr->matrix_pointer;
     printf("%c", '[');
     for(int i = 0; i < row; i++){
       for(int j = 0; j < col; j++){
@@ -275,6 +272,37 @@ void print_int_matrix(matrix* mat_ptr, int row, int col){
         else printf("%d, ", mat[i][j]);
       }
     }
+}
+
+
+
+// void print_int_matrix(matrix* mat_ptr, int row, int col, char* typ){
+//   // struct matrix mat;
+//     //int **mat = (int **)mat_ptr->matrix_pointer;
+//     if (strcmp(typ, "int"))!{
+//       int **mat = (int **)mat_ptr->matrix_pointer;
+//       //int** mat = malloc(sizeof(mat_ptr->matrix_pointer));
+//     }
+//
+//     if !(strcmp(typ, "float")){
+//       float** mat = malloc(sizeof(mat_ptr->matrix_pointer));
+//     }
+//      else{
+//
+//      }
+//
+//   // mat.matrix_pointer =
+//     memset(mat, (mat_ptr->matrix_pointer), sizeof((mat_ptr->matrix_pointer)[row][col])*row*col );
+//     printf("%c", '[');
+//     for(int i = 0; i < row; i++){
+//       for(int j = 0; j < col; j++){
+//         if(i == (row - 1) && j == (col - 1)) printf("%d]\n", mat[i][j]);
+//         else if(i == 0 && j == 0) printf("%d, ", mat[i][j]);
+//         else if(j == (col - 1)) printf("%d\n", mat[i][j]);
+//         else if(j == 0) printf(" %d, ", mat[i][j]);
+//         else printf("%d, ", mat[i][j]);
+//       }
+//     }
 
     // for(int i = 0; i < row; i++){
     //   for(int j = 0; j < col; j++){
@@ -285,7 +313,7 @@ void print_int_matrix(matrix* mat_ptr, int row, int col){
     //     else printf("%d, ", mat.matrix_pointer[i][j]);
     //   }
     // }
-}
+//}
 
 void print_float_matrix(float** mat, int row, int col){
     printf("%c", '[');

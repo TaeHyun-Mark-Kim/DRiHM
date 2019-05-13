@@ -211,11 +211,13 @@ and
                             ignore(L.build_store e' (lookup s) builder); e'
 
       | SMatrixLit (contents, rows, cols, str_of_typ) ->
+           Printf.printf "Debug: %s\n" str_of_typ;
           (let matrix_contents = get_values_list contents in
             (* let get_type h = match h with
             | i32_t -> "int"
             | float_t -> "float"
             in *)
+
             match str_of_typ with
             | "int" ->
 
@@ -230,11 +232,12 @@ and
           (match str_of_typ with
              | iint -> *)
             (* | flt -> *)
-                let matrix = L.build_call init_flt_matrix_f [|L.const_int i32_t rows; L.const_int i32_t cols |] "init_flt_matrix" builder
+                let matrix = L.build_call init_flt_matrix_f [|L.const_int i32_t rows; L.const_int i32_t cols |] "init_float_matrix" builder
                 in
                 ignore(List.map (fun elt -> L.build_call fill_float_matrix_f [|matrix; L.const_int i32_t rows; L.const_int i32_t cols; elt|] "fill_float_matrix" builder) matrix_contents); matrix
 
               | _ -> Printf.printf "Debug: %s\n" str_of_typ; raise (Failure "Undefined matrix type!!")
+
             )
                 (*
           let content_ptr = build_int_pointer (list_to_array (get_values_list contents))
@@ -294,6 +297,7 @@ and
       "printf" builder
       | SCall ("printm", [e;e1;e2]) ->
         L.build_call print_int_matrix_f [| (expr builder e); (expr builder e1) ; (expr builder e2)|] "printm" builder
+        (* L.build_call print_int_matrix_f [| (expr builder e); (expr builder e1) ; (expr builder e2)|] "printm" builder *)
         (*L.build_call sample_print_f [||] "printm" builder*)
 
       | SCall ("prints", [e]) ->

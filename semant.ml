@@ -144,7 +144,7 @@ let check (globals, functions) =
             ( match l with
             [] -> "NONE"
             | hd::tl -> type_of_mat hd) in
-          Printf.printf "Semnat Debug: %s\n" ty;
+          
           if List.length d > 2 then (Matrix, SMatrixLit ((List.map expr l), List.hd d, List.hd (List.tl d), ty ))
           else if List.length d = 2 then (Matrix, SMatrixLit ( (List.map expr (flatten (List.tl d) l)), List.hd d, List.hd (List.tl d), ty ))
           else if List.length d = 1 then (Matrix, SMatrixLit ( (List.map expr (flatten (List.tl d) l)), List.hd d, 1,  ty ))
