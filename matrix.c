@@ -4,11 +4,12 @@
 #include <string.h>
 
 struct int_matrix {
-    int** matrix_pointer;
+    void** matrix_pointer;
     int count;
 };
 
 typedef struct int_matrix int_matrix;
+typedef struct float_matrix float_matrix;
 
 void** init_empty_matrix(){
     void** res;
@@ -16,9 +17,9 @@ void** init_empty_matrix(){
 }
 
 int_matrix* init_int_matrix(int row, int col){
-    int** res = malloc(row * sizeof(int*));
+    void** res = malloc(row * sizeof(void*));
     for(int i = 0; i < row; i++){
-        res[i] = malloc(col * sizeof(int));
+        res[i] = malloc(col * sizeof(double));
     }
     int_matrix* result = malloc(sizeof(int_matrix));
     result->matrix_pointer = res;
@@ -26,46 +27,27 @@ int_matrix* init_int_matrix(int row, int col){
     return result;
 }
 
+
+
 int_matrix* fill_int_matrix(int_matrix* dest, int row_size, int col_size, int element){
     int offset = dest->count;
     int row = offset / col_size;
     int col = offset % col_size;
-    dest->matrix_pointer[row][col] = element;
+    int** mat = (int**) dest->matrix_pointer;
+    mat[row][col] = element;
+    //dest->matrix_pointer[row][col] = element;
     dest->count++;
     return dest;
 }
 
-/*
-int_matrix* init_int_matrix(int* source, int row, int col){
-    fprintf(stdout, "%s\n", "function invoked");
-    int** res = malloc(row * sizeof(int*));
-    for(int i = 0; i < row; i++){
-        res[i] = malloc(col * sizeof(int));
-    }
-    for(int i = 0; i < row; i++){
-        for(int j = 0; j < col; j++){
-            res[i][j] = *source;
-            source++;
-        }
-    }
-    int_matrix* result = malloc(sizeof(int_matrix));
-    result->matrix_pointer = res;
-    return result;
-}
-*/
-
-float** init_float_matrix(float* source, int row, int col){
-    float** res = malloc(row * sizeof(float*));
-    for(int i = 0; i < row; i++){
-        res[i] = malloc(col * sizeof(float));
-    }
-    for(int i = 0; i < row; i++){
-        for(int j = 0; j < col; j++){
-            res[i][j] = *source;
-            source++;
-        }
-    }
-    return res;
+int_matrix* fill_float_matrix(int_matrix* dest, int row_size, int col_size, double element){
+    int offset = dest->count;
+    int row = offset / col_size;
+    int col = offset % col_size;
+    double** mat = (double**) dest->matrix_pointer;
+    mat[row][col] = element;
+    dest->count++;
+    return dest;
 }
 
 char** init_char_matrix(char* source, int row, int col){
@@ -85,8 +67,8 @@ char** init_char_matrix(char* source, int row, int col){
 int_matrix* add_int_matrix(int_matrix* matrix1, int_matrix* matrix2, int row, int col){
     //Define 2-D array as an array of pointers to pointers
     //where each points to an array of integers
-    int** m1 = matrix1->matrix_pointer;
-    int** m2 = matrix2->matrix_pointer;
+    int** m1 = (int**) matrix1->matrix_pointer;
+    int** m2 = (int**) matrix2->matrix_pointer;
     int** res = malloc(row * sizeof(int*));
     for(int i = 0; i < row; i++){
         res[i] = malloc(col * sizeof(int));
@@ -97,23 +79,27 @@ int_matrix* add_int_matrix(int_matrix* matrix1, int_matrix* matrix2, int row, in
         }
     }
     int_matrix* result = malloc(sizeof(int_matrix));
-    result->matrix_pointer = res;
+    result->matrix_pointer = (void**) res;
     return result;
 }
 
-float** add_float_matrix(float** m1, float** m2, int row, int col){
+int_matrix* add_float_matrix(int_matrix* matrix1, int_matrix* matrix2, int row, int col){
     //Define 2-D array as an array of pointers to pointers
     //where each points to an array of integers
-    float** res = malloc(row * sizeof(float*));
+    double** m1 = (double**) matrix1->matrix_pointer;
+    double** m2 = (double**) matrix2->matrix_pointer;
+    double** res = malloc(row * sizeof(double*));
     for(int i = 0; i < row; i++){
-        res[i] = malloc(col * sizeof(float));
+        res[i] = malloc(col * sizeof(double));
     }
     for(int i = 0; i < row; i++){
         for(int j = 0; j < col; j++){
             res[i][j] = m1[i][j] + m2[i][j];
         }
     }
-    return res;
+    int_matrix* result = malloc(sizeof(int_matrix));
+    result->matrix_pointer = (void**) res;
+    return result;
 }
 
 char** add_char_matrix(char** m1, char** m2, int row, int col){
@@ -134,8 +120,8 @@ char** add_char_matrix(char** m1, char** m2, int row, int col){
 int_matrix* subtract_int_matrix(int_matrix* matrix1, int_matrix* matrix2, int row, int col){
     //Define 2-D array as an array of pointers to pointers
     //where each points to an array of integers
-    int** m1 = matrix1->matrix_pointer;
-    int** m2 = matrix2->matrix_pointer;
+    int** m1 = (int**) matrix1->matrix_pointer;
+    int** m2 = (int**) matrix2->matrix_pointer;
     int** res = malloc(row * sizeof(int*));
     for(int i = 0; i < row; i++){
         res[i] = malloc(col * sizeof(int));
@@ -146,21 +132,27 @@ int_matrix* subtract_int_matrix(int_matrix* matrix1, int_matrix* matrix2, int ro
         }
     }
     int_matrix* result = malloc(sizeof(int_matrix));
-    result->matrix_pointer = res;
+    result->matrix_pointer = (void**) res;
     return result;
 }
 
-float** subtract_float_matrix(float** m1, float** m2, int row, int col){
-    float** res = malloc(row * sizeof(float*));
+int_matrix* subtract_float_matrix(int_matrix* matrix1, int_matrix* matrix2, int row, int col){
+    //Define 2-D array as an array of pointers to pointers
+    //where each points to an array of integers
+    double** m1 = (double**) matrix1->matrix_pointer;
+    double** m2 = (double**) matrix2->matrix_pointer;
+    double** res = malloc(row * sizeof(double*));
     for(int i = 0; i < row; i++){
-        res[i] = malloc(col * sizeof(float));
+        res[i] = malloc(col * sizeof(double));
     }
     for(int i = 0; i < row; i++){
         for(int j = 0; j < col; j++){
             res[i][j] = m1[i][j] - m2[i][j];
         }
     }
-    return res;
+    int_matrix* result = malloc(sizeof(int_matrix));
+    result->matrix_pointer = (void**) res;
+    return result;
 }
 
 char** subtract_char_matrix(char** m1, char** m2, int row, int col){
@@ -177,8 +169,8 @@ char** subtract_char_matrix(char** m1, char** m2, int row, int col){
 }
 
 int_matrix* multiply_int_matrix(int_matrix* matrix1, int_matrix* matrix2, int m1_row, int m1_col, int m2_col){
-    int** m1 = matrix1->matrix_pointer;
-    int** m2 = matrix2->matrix_pointer;
+    int** m1 = (int**) matrix1->matrix_pointer;
+    int** m2 = (int**) matrix2->matrix_pointer;
     int** res = malloc(m1_row * sizeof(int*));
     for(int i = 0; i < m1_row; i++){
       res[i] = malloc(m2_col * sizeof(int));
@@ -193,25 +185,29 @@ int_matrix* multiply_int_matrix(int_matrix* matrix1, int_matrix* matrix2, int m1
       }
     }
     int_matrix* result = malloc(sizeof(int_matrix));
-    result->matrix_pointer = res;
+    result->matrix_pointer = (void**) res;
     return result;
 }
 
-float** multiply_float_matrix(float** m1, float** m2, int m1_row, int m1_col, int m2_col){
-    float** res = malloc(m1_row * sizeof(float*));
+int_matrix* multiply_float_matrix(int_matrix* matrix1, int_matrix* matrix2, int m1_row, int m1_col, int m2_col){
+    double** m1 = (double**) matrix1->matrix_pointer;
+    double** m2 = (double**) matrix2->matrix_pointer;
+    double** res = malloc(m1_row * sizeof(double*));
     for(int i = 0; i < m1_row; i++){
-      res[i] = malloc(m2_col * sizeof(float));
+      res[i] = malloc(m2_col * sizeof(double));
     }
     for(int i = 0; i < m1_row; i++){
       for(int j = 0; j < m2_col; j++){
-        float val = 0;
+        double val = 0.0;
         for(int k = 0; k < m1_col; k++){
           val += m1[i][k] * m2[k][j];
         }
         res[i][j] = val;
       }
     }
-    return res;
+    int_matrix* result = malloc(sizeof(int_matrix));
+    result->matrix_pointer = (void**) res;
+    return result;
 }
 
 char** multiply_char_matrix(char** m1, char** m2, int m1_row, int m1_col, int m2_col){
@@ -232,7 +228,7 @@ char** multiply_char_matrix(char** m1, char** m2, int m1_row, int m1_col, int m2
 }
 
 void print_int_matrix(int_matrix* mat_ptr, int row, int col){
-    int** mat = mat_ptr->matrix_pointer;
+    int** mat = (int**) mat_ptr->matrix_pointer;
     printf("%c", '[');
     for(int i = 0; i < row; i++){
       for(int j = 0; j < col; j++){
@@ -245,7 +241,8 @@ void print_int_matrix(int_matrix* mat_ptr, int row, int col){
     }
 }
 
-void print_float_matrix(float** mat, int row, int col){
+void print_float_matrix(int_matrix* mat_ptr, int row, int col){
+    double** mat = (double**) mat_ptr->matrix_pointer;
     printf("%c", '[');
     for(int i = 0; i < row; i++){
       for(int j = 0; j < col; j++){
@@ -257,7 +254,6 @@ void print_float_matrix(float** mat, int row, int col){
       }
     }
 }
-
 void print_char_matrix(char** mat, int row, int col){
     printf("%c", '[');
     for(int i = 0; i < row; i++){
@@ -308,8 +304,49 @@ int int_det_helper(int** m, int dim){
 }
 
 int int_det(int_matrix* matrix, int dim){
-  int** m = matrix->matrix_pointer;
+  int** m = (int**) matrix->matrix_pointer;
   return int_det_helper(m, dim);
+}
+
+double** float_cofactorM(double** m, int dim, int r, int c){
+  int d = dim - 1;
+	double** res = malloc(d * sizeof(double*));
+	for(int i = 0; i < d; i++){
+		res[i] = malloc(d * sizeof(double));
+	}
+	for(int i = 1; i < dim; i++){
+		for(int j = 0; j < dim; j++){
+      if(j < c){
+        res[i - 1][j] = m[i][j];
+      }
+      else if (j > c){
+        res[i - 1][j - 1] = m[i][j];
+      }
+    }
+  }
+  return res;
+}
+
+double float_det_helper(double** m, int dim){
+	int d = 0;
+  if (dim == 0){
+    return 1;
+  }
+  if (dim == 1){
+    return m[0][0];
+  }
+	if (dim == 2){
+		return ( (m[0][0] * m[1][1]) - (m[1][0] * m[0][1]));
+	}
+	for(int i = 0; i < dim; i++){
+    d+= ((int) pow(-1.0, (double) i)) * m[0][i] * float_det_helper(float_cofactorM(m, dim, 0, i), dim - 1);
+	}
+	return d;
+}
+
+double float_det(int_matrix* matrix, int dim){
+  double** m = (double**) matrix->matrix_pointer;
+  return float_det_helper(m, dim);
 }
 
 #ifdef BUILD_TEST

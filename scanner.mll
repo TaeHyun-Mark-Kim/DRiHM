@@ -45,7 +45,8 @@ rule token = parse
 | "true"   { BLIT(true)  }
 | "false"  { BLIT(false) }
 | digits as lxm { LITERAL(int_of_string lxm) }
-| digits '.'  digit* ( ['e' 'E'] ['+' '-']? digits )? as lxm { FLIT(lxm) }
+(*| digits '.'  digit* ( ['e' 'E'] ['+' '-']? digits )? as lxm { FLIT(lxm) }*)
+| digits '.' digits as lxm { FLIT(float_of_string lxm) }
 | ['\'']['a'-'z' 'A'-'Z' '0'-'9' '!''@''#''$''%''^''&''*''('')''_''-''+''=''{''[''}' ']' '\'' '|' '~' '`'  '\"' ':' ';' '<' ',' '>' '.' '?' '/']['\'']
  as lxm { CLIT(String.get lxm 1) }
  |['\"'](['a'-'z' ' ' 'A'-'Z' '0'-'9' '!''@''#''$''%''^''&''*''('')''_''-''+''=''{''[''}' ']' '\'' '|' '~' '`' ':' ';' '<' ',' '>' '.' '?' '/']* as lxm)['\"']

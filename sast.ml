@@ -5,7 +5,7 @@ open Ast
 type sexpr = typ * sx
 and sx =
     SLiteral of int
-  | SFliteral of string
+  | SFliteral of float
   | SBoolLit of bool
   | SCliteral of char
   | SSliteral of string
@@ -45,7 +45,7 @@ let rec string_of_sexpr (t, e) =
     SLiteral(l) -> string_of_int l
   | SBoolLit(true) -> "true"
   | SBoolLit(false) -> "false"
-  | SFliteral(l) -> l
+  | SFliteral(l) -> string_of_float l
   | SCliteral(l) -> Char.escaped l
   | SSliteral(l) -> l
   | SMatrixLit(l, r, c) -> "rows: " ^ string_of_int r ^ ", cols: " ^ string_of_int c ^ " : [" ^ String.concat ", " (List.map string_of_sexpr l) ^ "]"

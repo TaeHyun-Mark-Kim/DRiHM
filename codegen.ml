@@ -76,6 +76,9 @@ let translate (globals, functions) =
   let print_int_matrix_t = L.function_type i32_t [| int_mat_t; i32_t ; i32_t |] in
   let print_int_matrix_f = L.declare_function "print_int_matrix" print_int_matrix_t the_module in
 
+  let print_float_matrix_t = L.function_type i32_t [| int_mat_t; i32_t ; i32_t |] in
+  let print_float_matrix_f = L.declare_function "print_float_matrix" print_float_matrix_t the_module in
+
   let sample_print_t = L.function_type i32_t [||] in
   let sample_print_f = L.declare_function "sample_print" sample_print_t the_module in
 
@@ -85,17 +88,33 @@ let translate (globals, functions) =
   let fill_int_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t; i32_t; i32_t|] in
   let fill_int_matrix_f = L.declare_function "fill_int_matrix" fill_int_matrix_t the_module in
 
+  let fill_float_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t; i32_t; float_t|] in
+  let fill_float_matrix_f = L.declare_function "fill_float_matrix" fill_float_matrix_t the_module in
+
   let add_int_matrix_t = L.function_type int_mat_t [|int_mat_t; int_mat_t; i32_t; i32_t|] in
   let add_int_matrix_f = L.declare_function "add_int_matrix" add_int_matrix_t the_module in
+
+  let add_float_matrix_t = L.function_type int_mat_t [|int_mat_t; int_mat_t; i32_t; i32_t|] in
+  let add_float_matrix_f = L.declare_function "add_float_matrix" add_float_matrix_t the_module in
 
   let subtract_int_matrix_t = L.function_type int_mat_t [|int_mat_t; int_mat_t; i32_t; i32_t|] in
   let subtract_int_matrix_f = L.declare_function "subtract_int_matrix" subtract_int_matrix_t the_module in
 
+  let subtract_float_matrix_t = L.function_type int_mat_t [|int_mat_t; int_mat_t; i32_t; i32_t|] in
+  let subtract_float_matrix_f = L.declare_function "subtract_float_matrix" subtract_float_matrix_t the_module in
+
   let multiply_int_matrix_t = L.function_type int_mat_t [|int_mat_t; int_mat_t; i32_t; i32_t; i32_t|] in
   let multiply_int_matrix_f = L.declare_function "multiply_int_matrix" multiply_int_matrix_t the_module in
 
+  let multiply_float_matrix_t = L.function_type int_mat_t [|int_mat_t; int_mat_t; i32_t; i32_t; i32_t|] in
+  let multiply_float_matrix_f = L.declare_function "multiply_float_matrix" multiply_float_matrix_t the_module in
+
   let determinant_int_matrix_t = L.function_type i32_t [|int_mat_t; i32_t|] in
   let determinant_int_matrix_f = L.declare_function "int_det" determinant_int_matrix_t the_module in
+
+  let determinant_float_matrix_t = L.function_type i32_t [|int_mat_t; i32_t|] in
+  let determinant_float_matrix_f = L.declare_function "float_det" determinant_float_matrix_t the_module in
+
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
   let function_decls : (L.llvalue * sfunc_decl) StringMap.t =
@@ -161,19 +180,23 @@ let translate (globals, functions) =
     let temp_matrix_map =  ref StringMap.empty
     in
     (*Add row and col dimension information of a newly created matrix*)
-    let add_temp_matrix mat_ptr rows cols =
-      temp_matrix_map := StringMap.add (L.value_name mat_ptr) (rows, cols) !temp_matrix_map
+    let add_temp_matrix mat_ptr rows cols t =
+      temp_matrix_map := StringMap.add (L.value_name mat_ptr) (rows, cols, t) !temp_matrix_map
     in
     let lookup_dim mat_ptr =
       StringMap.find (L.value_name mat_ptr) !temp_matrix_map
     in
     let extract_row mat = match (lookup_dim mat) with
-    (row, _) -> row
+    (row, _, _) -> row
     | _ -> raise(Failure "Matrix missing dimension infomation")
     in
     let extract_col mat = match (lookup_dim mat) with
-    (_, col) -> col
+    (_, col, _) -> col
     | _ -> raise(Failure "Matrix missing dimension information")
+    in
+    let extract_type mat = match (lookup_dim mat) with
+    (_, _, t) -> t
+    | _ -> raise(Failure "Matrix missing type information")
     in
 
     (*Map of matrix variables to matrix pointers*)
@@ -211,7 +234,7 @@ let translate (globals, functions) =
     let rec expr2 builder ((_, e) : sexpr) = (match e with
        SLiteral i  ->  [L.const_int i32_t i]
       | SBoolLit b  -> [L.const_int i1_t (if b then 1 else 0)]
-      | SFliteral l -> [L.const_float_of_string float_t l]
+      | SFliteral l -> [L.const_float float_t l]
       (*Turn character into integer representation*)
       | SCliteral l -> [L.const_int i8_t (int_of_char l)]
       | SSliteral l -> [L.build_global_stringptr l "string" builder]
@@ -232,7 +255,7 @@ and
     let rec expr builder ((t, e) : sexpr) = match e with
 	      SLiteral i  -> L.const_int i32_t i
       | SBoolLit b  -> L.const_int i1_t (if b then 1 else 0)
-      | SFliteral l -> L.const_float_of_string float_t l
+      | SFliteral l -> L.const_float float_t l
       (*Turn character into integer representation*)
       | SCliteral l -> L.const_int i8_t (int_of_char l)
       | SSliteral l ->
@@ -251,8 +274,17 @@ and
           in
           let matrix = L.build_call init_int_matrix_f [|L.const_int i32_t rows; L.const_int i32_t cols|] "init_int_matrix" builder
           in
-          ignore(add_temp_matrix matrix rows cols);
-          ignore(List.map (fun elt -> L.build_call fill_int_matrix_f [|matrix; L.const_int i32_t rows; L.const_int i32_t cols; elt|] "fill_int_matrix" builder) matrix_contents); matrix
+          if L.type_of (List.hd matrix_contents) = i32_t then
+            (
+            ignore(add_temp_matrix matrix rows cols "int");
+            ignore(List.map (fun elt -> L.build_call fill_int_matrix_f [|matrix; L.const_int i32_t rows; L.const_int i32_t cols; elt|] "fill_int_matrix" builder) matrix_contents); matrix
+            )
+          else if L.type_of (List.hd matrix_contents) = float_t then
+            (
+            ignore(add_temp_matrix matrix rows cols "float");
+            ignore(List.map (fun elt -> L.build_call fill_float_matrix_f [|matrix; L.const_int i32_t rows; L.const_int i32_t cols; elt|] "fill_float_matrix" builder) matrix_contents); matrix
+            )
+          else raise(Failure "Marix contains incompatible type(s)")
     | SAssign (s, e) ->
       let e' = expr builder e
       in
@@ -277,22 +309,6 @@ and
 	  | A.And | A.Or ->
 	      raise (Failure "internal error: semant should have rejected and/or on float")
 	  ) e1' e2' "tmp" builder
-    (*
-    | SBinop ((A.String, SSliteral s1), op, (A.String, SSliteral s2)) ->
-   (match op with
-     A.Add ->
-       (*Function to add 2 Ocaml strings*)
-       let buffer_to_string b s1 s2 =
-         Buffer.add_string b s1;
-         Buffer.add_string b s2;
-         Buffer.contents b
-       in
-       let add_strings s1 s2 =
-         buffer_to_string (Buffer.create 80) s1 s2
-       in
-       L.build_global_stringptr (add_strings s1 s2) "str" builder
-     | _ -> raise (Failure "internal error: the operation is not supported for String types"))
-    *)
     | SBinop (e1, op, e2) ->
 	  let e1' = expr builder e1
 	  and e2' = expr builder e2 in
@@ -311,17 +327,32 @@ and
       in
       match op with
       A.Add  when dimension_check ->
+        if ((extract_type e1') = "int" && (extract_type e2') = "int") then
         let matrix = L.build_call add_int_matrix_f [| e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1|] "add_int_mat" builder
         in
-        ignore(add_temp_matrix matrix row1 col1); matrix
+        ignore(add_temp_matrix matrix row1 col1 "int"); matrix
+        else
+        let matrix = L.build_call add_float_matrix_f [| e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1|] "add_float_mat" builder
+        in
+        ignore(add_temp_matrix matrix row1 col1 "float"); matrix
     | A.Sub when dimension_check    ->
+        if ((extract_type e1') = "int" && (extract_type e2') = "int") then
         let matrix = L.build_call subtract_int_matrix_f [| e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1|] "subtract_int_mat" builder
         in
-        ignore(add_temp_matrix matrix row1 col1); matrix
+        ignore(add_temp_matrix matrix row1 col1 "int"); matrix
+        else
+        let matrix = L.build_call subtract_float_matrix_f [| e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1|] "subtract_float_mat" builder
+        in
+        ignore(add_temp_matrix matrix row1 col1 "float"); matrix
     | A.Mult when mult_dimension_check ->
+        if ((extract_type e1') = "int" && (extract_type e2') = "int") then
         let matrix = L.build_call multiply_int_matrix_f [|e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1; L.const_int i32_t col2|] "multiply_int_mat" builder
         in
-        ignore(add_temp_matrix  matrix row1 col2); matrix
+        ignore(add_temp_matrix  matrix row1 col2 "int"); matrix
+        else
+        let matrix = L.build_call multiply_float_matrix_f [|e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1; L.const_int i32_t col2|] "multiply_float_mat" builder
+        in
+        ignore(add_temp_matrix  matrix row1 col2 "float"); matrix
     |_ -> raise (Failure "Matrix dimension mismatch")
     else if (L.type_of e1' = string_t && L.type_of e2' = string_t) then
       match op with
@@ -381,7 +412,10 @@ and
         in
         let cols = extract_col e'
         in
+        if ((extract_type e') = "int") then
         L.build_call print_int_matrix_f [| (e'); ( L.const_int i32_t rows); (L.const_int i32_t cols)|] "printm" builder
+        else
+        L.build_call print_float_matrix_f [| (e'); ( L.const_int i32_t rows); (L.const_int i32_t cols)|] "printm" builder
       | SCall ("det", [e]) ->
         (*need to add dimension checking*)
         let e' = expr builder e
@@ -391,7 +425,10 @@ and
         let cols = extract_col e'
         in
         if rows = cols then
-        L.build_call determinant_int_matrix_f [|(e'); (L.const_int i32_t rows)|] "int_det" builder
+          if ((extract_type e') = "int") then
+            L.build_call determinant_int_matrix_f [|(e'); (L.const_int i32_t rows)|] "int_det" builder
+          else
+            L.build_call determinant_float_matrix_f [|(e'); (L.const_int i32_t rows)|] "float_det" builder
         else raise(Failure "Determinant can't be calculated for a matrix that doesn't have eqaul number of rows and columns")
       | SCall ("prints", [e]) ->
     L.build_call printf_func [| string_format_str ; (expr builder e) |]

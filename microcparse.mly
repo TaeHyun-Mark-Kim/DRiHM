@@ -12,7 +12,8 @@ open Ast
 %token <bool> BLIT
 %token <char> CLIT
 %token <string> SLIT
-%token <string> ID FLIT
+%token <float> FLIT
+%token <string> ID
 %token EOF
 
 %start program
