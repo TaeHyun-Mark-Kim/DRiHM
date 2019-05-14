@@ -26,7 +26,7 @@ let translate (globals, functions) =
 
   (* Create the LLVM compilation module into which
      we will generate code *)
-  let the_module = L.create_module context "MicroC" in
+  let the_module = L.create_module context "DRiHM" in
 
   (* Get types from the context *)
   let i32_t      = L.i32_type    context
@@ -41,7 +41,7 @@ let translate (globals, functions) =
       None -> raise (Failure "Matrix type is missing in C")
     | Some t -> t)
   in
-  (* Return the LLVM type for a MicroC type *)
+  (* Return the LLVM type for a DRiHM type *)
   let ltype_of_typ = function
       A.Int   -> i32_t
     | A.Bool  -> i1_t

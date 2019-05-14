@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Regression testing script for MicroC
+# Regression testing script for DRiHM
 # Step through a list of files
 #  Compile, run, and check the output of each expected-to-work test
 #  Compile and check the error of each expected-to-fail test
@@ -15,10 +15,10 @@ LLC="/usr/local/opt/llvm/bin/llc"
 # Path to the C compiler
 CC="cc"
 
-# Path to the microc compiler.  Usually "./microc.native"
-# Try "_build/microc.native" if ocamlbuild was unable to create a symbolic link.
-MICROC="./microc.native"
-#MICROC="_build/microc.native"
+# Path to the drihm compiler.  Usually "./drihm.native"
+# Try "_build/drihm.native" if ocamlbuild was unable to create a symbolic link.
+DRIHM="./drihm.native"
+#DRIHM="_build/drihm.native"
 
 # Set time limit for all operations
 ulimit -t 30
@@ -31,7 +31,7 @@ globalerror=0
 keep=0
 
 Usage() {
-    echo "Usage: testall.sh [options] [.mc files]"
+    echo "Usage: testall.sh [options] [.dm files]"
     echo "-k    Keep intermediate files"
     echo "-h    Print this help"
     exit 1
@@ -80,8 +80,8 @@ RunFail() {
 Check() {
     error=0
     basename=`echo $1 | sed 's/.*\\///
-                             s/.mc//'`
-    reffile=`echo $1 | sed 's/.mc$//'`
+                             s/.dm//'`
+    reffile=`echo $1 | sed 's/.dm$//'`
     basedir="`echo $1 | sed 's/\/[^\/]*$//'`/."
 
     echo -n "$basename..."
@@ -92,7 +92,7 @@ Check() {
     generatedfiles=""
 
     generatedfiles="$generatedfiles ${basename}.ll ${basename}.s ${basename}.exe ${basename}.out" &&
-    Run "$MICROC" "$1" ">" "${basename}.ll" &&
+    Run "$DRIHM" "$1" ">" "${basename}.ll" &&
     Run "$LLC" "-relocation-model=pic" "${basename}.ll" ">" "${basename}.s" &&
     # Run "$CC" "-o" "${basename}.exe" "${basename}.s" "printbig.o" &&
     Run "$CC" "-o" "${basename}.exe" "${basename}.s" "matrix.o" &&
@@ -116,8 +116,8 @@ Check() {
 CheckFail() {
     error=0
     basename=`echo $1 | sed 's/.*\\///
-                             s/.mc//'`
-    reffile=`echo $1 | sed 's/.mc$//'`
+                             s/.dm//'`
+    reffile=`echo $1 | sed 's/.dm$//'`
     basedir="`echo $1 | sed 's/\/[^\/]*$//'`/."
 
     echo -n "$basename..."
@@ -128,7 +128,7 @@ CheckFail() {
     generatedfiles=""
 
     generatedfiles="$generatedfiles ${basename}.err ${basename}.diff" &&
-    RunFail "$MICROC" "<" $1 "2>" "${basename}.err" ">>" $globallog &&
+    RunFail "$DRIHM" "<" $1 "2>" "${basename}.err" ">>" $globallog &&
     Compare ${basename}.err ${reffile}.err ${basename}.diff
 
     # Report the status and clean up the generated files
@@ -177,8 +177,8 @@ if [ $# -ge 1 ]
 then
     files=$@
 else
-    # files="mytest/test-*.mc tests/fail-*.mc"
-      files="mytest/test-*.mc"
+    # files="mytest/test-*.dm tests/fail-*.dm"
+      files="mytest/test-*.dm"
 fi
 
 for file in $files

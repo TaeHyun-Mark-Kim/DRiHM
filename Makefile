@@ -8,19 +8,19 @@ test : all testall.sh
 # to test linking external code
 
 .PHONY : all
-all : microc.native matrix.o
-# all : microc.native printbig.o matrix.o
+all : drihm.native matrix.o
+# all : drihm.native printbig.o matrix.o
 
-# "make microc.native" compiles the compiler
+# "make drihm.native" compiles the compiler
 #
 # The _tags file controls the operation of ocamlbuild, e.g., by including
 # packages, enabling warnings
 #
 # See https://github.com/ocaml/ocamlbuild/blob/master/manual/manual.adoc
 
-microc.native : matrix.bc
+drihm.native : matrix.bc
 	opam config exec -- \
-	ocamlbuild -use-ocamlfind microc.native -pkgs llvm,llvm.analysis,llvm.bitreader
+	ocamlbuild -use-ocamlfind drihm.native -pkgs llvm,llvm.analysis,llvm.bitreader
 
 # "make clean" removes all generated files
 
@@ -60,7 +60,7 @@ FAILS = \
 TESTFILES = $(TESTS:%=test-%.mc) $(TESTS:%=test-%.out) \
 	    $(FAILS:%=fail-%.mc) $(FAILS:%=fail-%.err)
 
-TARFILES = ast.ml sast.ml codegen.ml Makefile _tags microc.ml microcparse.mly \
+TARFILES = ast.ml sast.ml codegen.ml Makefile _tags drihm.ml Parser.mly \
 	README scanner.mll semant.ml testall.sh \
 	arcade-font.pbm font2c \
 	Dockerfile \
@@ -69,6 +69,6 @@ TARFILES = ast.ml sast.ml codegen.ml Makefile _tags microc.ml microcparse.mly \
 	# Dockerfile \
 	# $(TESTFILES:%=tests/%)
 
-microc.tar.gz : $(TARFILES)
-	cd .. && tar czf microc/microc.tar.gz \
-		$(TARFILES:%=microc/%)
+drihm.tar.gz : $(TARFILES)
+	cd .. && tar czf drihm/drihm.tar.gz \
+		$(TARFILES:%=drihm/%)
