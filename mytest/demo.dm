@@ -14,6 +14,7 @@ int main(){
     matrix a;
     matrix b;
     matrix c;
+    matrix d;
     int determinant;
     int i;
     int j;
@@ -21,7 +22,7 @@ int main(){
     int h;
     int m;
     int k;
-    a = [[1,2,3],[0,1,4],[5,6,0]];
+    a = [[1,2,3],[4,5,6],[7,8,10]];
     b = [[0,0,0],[0,0,0],[0,0,0]];
     c = [[0,0],[0,0]];
 
@@ -74,9 +75,20 @@ int main(){
             insert(b,i,j,det(c) * power(-1,i+j));
         }
     }
-    b = transpose(b);
-    printm(b);
-    printm(a*b);
+
+    prints("Inverse of matrix not divided by determinant:");
+    d = transpose(b);
+    printm(d);
+
+        
+    d = (a*d);
+    for(i = 0; i < 3; i = i + 1){
+        insert(d,i,i,select(d,i,i) / det(a));
+    }
+
+    prints("Matrix multiplied by its inverse: ");
+    printm(d);
+
 
     
 
