@@ -117,6 +117,9 @@ let translate (globals, functions) =
 	let transpose_float_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t; i32_t|] in
 	let transpose_float_matrix_f = L.declare_function "float_transpose" transpose_float_matrix_t the_module in
 
+  let select_int_index_t = L.function_type i32_t [|int_mat_t; i32_t; i32_t; i32_t; i32_t|] in
+  let select_int_index_f = L.declare_function "int_select" select_int_index_t the_module in
+
   let delete_matrix_t = L.function_type i32_t [|int_mat_t; i32_t; i32_t|] in
   let delete_matrix_f = L.declare_function "delete_matrix" delete_matrix_t the_module in
 
@@ -496,6 +499,24 @@ let translate (globals, functions) =
           else
             L.build_call determinant_float_matrix_f [|(e'); (L.const_int i32_t rows)|] "float_det" builder
         else raise(Failure "Determinant can't be calculated for a matrix that doesn't have eqaul number of rows and columns")
+
+        | SCall ("select", [e; e1; e2]) ->
+          (*need to add dimension checking*)
+          let e' = expr builder e
+          in
+          let rows = extract_row e'
+          in
+          let cols = extract_col e'
+          in
+          let e1' = expr builder e1
+          in
+          let e2' = expr builder e2
+          in
+          if ((extract_type e') = "int") then
+            L.build_call select_int_index_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols); (e1'); (e2')|] "int_select" builder
+          else
+            L.build_call select_int_index_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols); (e1'); (e2')|] "float_select" builder
+            
       | SCall ("transpose", [e]) ->
         let e' = expr builder e
         in

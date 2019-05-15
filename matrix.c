@@ -414,6 +414,15 @@ int_matrix* int_transpose(int_matrix* matrix, int row, int col){
 	    return result;
 	}
 
+int int_select(int_matrix* matrix, int row, int col, int index1, int index2){
+    int** m1 = (int**) matrix->matrix_pointer;
+
+    if(row==1) return m1[0][index2];
+    else if(col ==1) return m1[index1][0];
+
+    return m1[index1][index2];
+}
+
 #ifdef BUILD_TEST
 int main(){
 
