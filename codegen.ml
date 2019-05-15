@@ -126,6 +126,9 @@ let translate (globals, functions) =
   let transpose_float_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t; i32_t|] in
   let transpose_float_matrix_f = L.declare_function "float_transpose" transpose_float_matrix_t the_module in
 
+  let set_int_matrix_t = L.function_type i32_t [|int_mat_t; i32_t; i32_t; i32_t;|] in
+	let set_int_matrix_f = L.declare_function "set_int_matrix" set_int_matrix_t the_module in
+
   let delete_matrix_t = L.function_type i32_t [|int_mat_t; i32_t; i32_t|] in
   let delete_matrix_f = L.declare_function "delete_matrix" delete_matrix_t the_module in
 
@@ -167,13 +170,7 @@ let translate (globals, functions) =
 	in StringMap.add n local_var m
       in
 (*********)
-      (*let add_assign (tp, vName, ex) =
-        match ex with
-        SNoexpr -> (tp, vName)
-        | _ ->
-        let e' = expr builder e in
-          ignore(L.build_store e' (lookup s) builder);
-      *)
+
       let sformals = List.map (fun (tp, vName, _) -> (tp, vName)) fdecl.sformals in
       let slocals= List.map (fun (tp, vName, _) -> (tp, vName)) fdecl.slocals in
 (*********)
@@ -511,6 +508,22 @@ let free_all_local_matrix =
           let matrix = L.build_call transpose_float_matrix_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols)|] "float_transpose" builder
           in
           ignore(add_temp_matrix  matrix cols rows "float"); matrix
+      | SCall("set", [e; e1; e2; e3]) ->
+        let e' = expr builder e
+        in
+        L.build_call set_int_matrix_f [|(e'); (expr builder e1); (expr builder e2); (expr builder e3)|] "set_matrix" builder
+      | SCall ("row", [e]) ->
+          let e' = expr builder e
+          in
+          let rows = extract_row e'
+          in
+          L.const_int i32_t rows
+      | SCall ("col", [e]) ->
+            let e' = expr builder e
+            in
+            let cols = extract_col e'
+            in
+            L.const_int i32_t cols
       | SCall ("prints", [e]) ->
         L.build_call printf_func [| string_format_str ; (expr builder e) |]
         "printf" builder
