@@ -53,6 +53,9 @@ let check (globals, functions) =
                                ("printm", [Matrix], Void);
                                (*Assigned separate name for printing string for now*)
                                ("det", [Matrix], Int);
+                               (* ("inverse", [Matrix], Int); *)
+                               ("transpose", [Matrix], Matrix);
+                               (* ("scale", [Matrix, Int], Matrix); *)
                                ("prints", [String], Void);
 			                         ("printbig", [Int], Void) ]
   in
