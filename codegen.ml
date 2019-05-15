@@ -111,6 +111,15 @@ let translate (globals, functions) =
   let determinant_float_matrix_t = L.function_type i32_t [|int_mat_t; i32_t|] in
   let determinant_float_matrix_f = L.declare_function "float_det" determinant_float_matrix_t the_module in
 
+  let transpose_int_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t; i32_t|] in
+	let transpose_int_matrix_f = L.declare_function "int_transpose" transpose_int_matrix_t the_module in
+
+	let transpose_float_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t; i32_t|] in
+	let transpose_float_matrix_f = L.declare_function "float_transpose" transpose_float_matrix_t the_module in
+
+  let delete_matrix_t = L.function_type i32_t [|int_mat_t; i32_t; i32_t|] in
+  let delete_matrix_f = L.declare_function "delete_matrix" delete_matrix_t the_module in
+
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
   let function_decls : (L.llvalue * sfunc_decl) StringMap.t =
@@ -179,8 +188,8 @@ let translate (globals, functions) =
     let add_temp_matrix mat_ptr rows cols t =
       temp_matrix_map := StringMap.add (L.value_name mat_ptr) (rows, cols, t) !temp_matrix_map
     in
-    let lookup_dim mat_ptr =
-      StringMap.find (L.value_name mat_ptr) !temp_matrix_map
+    let lookup_dim mat =
+      StringMap.find (L.value_name mat) !temp_matrix_map
     in
     let extract_row mat = match (lookup_dim mat) with
     (row, _, _) -> row
@@ -190,6 +199,9 @@ let translate (globals, functions) =
     in
     let extract_type mat = match (lookup_dim mat) with
     (_, _, t) -> t
+    in
+    let delete_mat mat =
+      StringMap.remove (L.value_name mat) !temp_matrix_map
     in
 
     (*Map of matrix variables to matrix pointers*)
@@ -201,6 +213,10 @@ let translate (globals, functions) =
     in
     let [@warning "-40"] lookup_mat s =
       StringMap.find s !var_matrix_map
+    in
+    (*checks if a given matrix pointer is bound to a variable*)
+    let check_variable mat_ptr =
+      StringMap.exists mat_ptr !var_matrix_map
     in
 
     (*Map of string pointers to strings*)
@@ -322,7 +338,13 @@ let translate (globals, functions) =
         if ((extract_type e1') = "int" && (extract_type e2') = "int") then
         let matrix = L.build_call add_int_matrix_f [| e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1|] "add_int_mat" builder
         in
-        ignore(add_temp_matrix matrix row1 col1 "int"); matrix
+        ignore(add_temp_matrix matrix row1 col1 "int");
+        (*Free used matrix literals and delete them from the map*)
+        ignore(L.build_call delete_matrix_f[|e1'; L.const_int i32_t row1; L.const_int i32_t col1;|] "delete_matrix" builder);
+        ignore(delete_mat e1');
+        ignore(delete_mat e2');
+        ignore(L.build_call delete_matrix_f[|e2'; L.const_int i32_t row2; L.const_int i32_t col2;|] "delete_matrix" builder);
+        matrix
         else
         let matrix = L.build_call add_float_matrix_f [| e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1|] "add_float_mat" builder
         in
@@ -422,6 +444,21 @@ let translate (globals, functions) =
           else
             L.build_call determinant_float_matrix_f [|(e'); (L.const_int i32_t rows)|] "float_det" builder
         else raise(Failure "Determinant can't be calculated for a matrix that doesn't have eqaul number of rows and columns")
+      | SCall ("transpose", [e]) ->
+        let e' = expr builder e
+        in
+        let rows = extract_row e'
+        in
+        let cols = extract_col e'
+        in
+        if ((extract_type e') = "int") then
+          let matrix = L.build_call transpose_int_matrix_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols)|] "int_transpose" builder
+          in
+          ignore(add_temp_matrix  matrix cols rows "int"); matrix
+          else
+          let matrix = L.build_call transpose_float_matrix_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols)|] "float_transpose" builder
+          in
+          ignore(add_temp_matrix  matrix cols rows "float"); matrix
       | SCall ("prints", [e]) ->
     L.build_call printf_func [| string_format_str ; (expr builder e) |]
       "printf" builder

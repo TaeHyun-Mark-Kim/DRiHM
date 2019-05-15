@@ -11,6 +11,29 @@ struct int_matrix {
 typedef struct int_matrix int_matrix;
 typedef struct float_matrix float_matrix;
 
+void delete_matrix(int_matrix* matrix, int row, int col){
+  void** mat = matrix->matrix_pointer;
+  for(int i = 0; i < row; i++){
+    free(mat[i]);
+  }
+  free(mat);
+  free(matrix);
+}
+
+void delete_int_matrix_ptr(int** mat, int row, int col){
+  for(int i = 0; i < row; i++){
+    free(mat[i]);
+  }
+  free(mat);
+}
+
+void delete_float_matrix_ptr(double** mat, int row, int col){
+  for(int i = 0; i < row; i++){
+    free(mat[i]);
+  }
+  free(mat);
+}
+
 void** init_empty_matrix(){
     void** res;
     return res;
@@ -298,7 +321,9 @@ int int_det_helper(int** m, int dim){
 		return ( (m[0][0] * m[1][1]) - (m[1][0] * m[0][1]));
 	}
 	for(int i = 0; i < dim; i++){
-    d+= ((int) pow(-1.0, (double) i)) * m[0][i] * int_det_helper(int_cofactorM(m, dim, 0, i), dim - 1);
+    int** cofactor = int_cofactorM(m, dim, 0, i);
+    d+= ((int) pow(-1.0, (double) i)) * m[0][i] * int_det_helper(cofactor, dim - 1);
+    delete_int_matrix_ptr(cofactor, dim - 1, dim - 1);
 	}
 	return d;
 }
@@ -339,7 +364,9 @@ double float_det_helper(double** m, int dim){
 		return ( (m[0][0] * m[1][1]) - (m[1][0] * m[0][1]));
 	}
 	for(int i = 0; i < dim; i++){
-    d+= ((int) pow(-1.0, (double) i)) * m[0][i] * float_det_helper(float_cofactorM(m, dim, 0, i), dim - 1);
+    double** cofactor = float_cofactorM(m, dim, 0, i);
+    d+= ((int) pow(-1.0, (double) i)) * m[0][i] * float_det_helper(cofactor, dim - 1);
+    delete_float_matrix_ptr(cofactor, dim - 1, dim - 1);
 	}
 	return d;
 }
@@ -348,6 +375,44 @@ double float_det(int_matrix* matrix, int dim){
   double** m = (double**) matrix->matrix_pointer;
   return float_det_helper(m, dim);
 }
+
+int_matrix* int_transpose(int_matrix* matrix, int row, int col){
+	  int** m1 = (int**) matrix->matrix_pointer;
+	  int** res = malloc(col * sizeof(int*));
+
+	  for(int i = 0; i < col; i++){
+	        res[i] = malloc(row * sizeof(int));
+	    }
+
+	  for(int i = 0; i < row; i++){
+	        for(int j = 0; j < col; j++){
+	            res[j][i] = m1[i][j];
+	        }
+	    }
+	    int_matrix* result = malloc(sizeof(int_matrix));
+	    result->matrix_pointer = (void**) res;
+
+	    return result;
+	}
+
+	int_matrix* float_transpose(int_matrix* matrix, int row, int col){
+	  double** m1 = (double**) matrix->matrix_pointer;
+	  double** res = malloc(col * sizeof(double*));
+
+	  for(int i = 0; i < col; i++){
+	        res[i] = malloc(row * sizeof(double));
+	    }
+
+	  for(int i = 0; i < row; i++){
+	        for(int j = 0; j < col; j++){
+	            res[j][i] = m1[i][j];
+	        }
+	    }
+	    int_matrix* result = malloc(sizeof(int_matrix));
+	    result->matrix_pointer = (void**) res;
+
+	    return result;
+	}
 
 #ifdef BUILD_TEST
 int main(){
@@ -361,6 +426,25 @@ int main(){
       fill_int_matrix(res, 2, 3, a1[i]);
     }
     print_int_matrix(res, 2, 3);
+    delete_matrix(res, 2, 3);
+
+    int b1[] = {2,3,3,1,12,6,1,3,10};
+    int_matrix* res2 = init_int_matrix(3, 3);
+    for(int i = 0; i < 9; i++){
+      fill_int_matrix(res2, 3, 3, b1[i]);
+    }
+    print_int_matrix(res2, 3, 3);
+    printf("%d\n", int_det(res2, 3));
+    delete_matrix(res2, 3, 3);
+
+    int c1[] = {1,5,3,1};
+    int_matrix* res3 = init_int_matrix(2, 2);
+    for(int i = 0; i < 4; i++){
+      fill_int_matrix(res3, 2, 2, c1[i]);
+    }
+    print_int_matrix(res3, 2, 2);
+    printf("%d\n", int_det(res3, 2));
+    delete_matrix(res3, 2, 2);
     /*
     int b1[] = {1, 4, 7};
     int b2[] = {2, 5, 8};
