@@ -482,9 +482,13 @@ and
         let cols = extract_col e'
         in
         if ((extract_type e') = "int") then
-          L.build_call transpose_int_matrix_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols)|] "int_transpose" builder
+          let matrix = L.build_call transpose_int_matrix_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols)|] "int_transpose" builder
+          in
+          ignore(add_temp_matrix  matrix cols rows "int"); matrix
         else
-          L.build_call transpose_float_matrix_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols)|] "float_transpose" builder
+          let matrix = L.build_call transpose_float_matrix_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols)|] "float_transpose" builder
+          in
+          ignore(add_temp_matrix  matrix cols rows "float"); matrix
       | SCall ("prints", [e]) ->
         L.build_call printf_func [| string_format_str ; (expr builder e) |]
         "printf" builder
