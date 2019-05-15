@@ -215,8 +215,26 @@ let translate (globals, functions) =
       StringMap.find s !var_matrix_map
     in
     (*checks if a given matrix pointer is bound to a variable*)
-    let check_variable mat_ptr =
-      StringMap.exists mat_ptr !var_matrix_map
+    let check_variable_exists mat_ptr =
+      let bind_list = StringMap.bindings !var_matrix_map
+      in
+      let get_val (_, a) = a
+      in
+      let rec match_matrix list mat_ptr =
+        match list with
+        [] -> false
+        | hd :: tl ->
+          if get_val hd =  mat_ptr then true
+          else match_matrix tl mat_ptr
+      in
+      match_matrix bind_list mat_ptr
+    in
+
+    (*Free used matrix literals and delete them from the map*)
+    let free_matrix mat_ptr row col =
+      if (check_variable_exists mat_ptr) = false then
+        ignore(L.build_call delete_matrix_f[|mat_ptr; L.const_int i32_t row; L.const_int i32_t col;|] "delete_matrix" builder);
+        ignore(delete_mat mat_ptr);
     in
 
     (*Map of string pointers to strings*)
@@ -296,7 +314,12 @@ let translate (globals, functions) =
     | SAssign (s, e) ->
       let e' = expr builder e
       in
-      if L.type_of e' = int_mat_t then (ignore(add_var_matrix s e'); e')
+      if L.type_of e' = int_mat_t then
+      let row = extract_row e'
+      in
+      let col = extract_col e'
+      in
+      (ignore(add_var_matrix s e'); e')
       else if L.type_of e' = string_t then (ignore(add_var_string s e'); e')
       else
       (ignore(L.build_store e' (lookup s) builder); e')
@@ -339,34 +362,46 @@ let translate (globals, functions) =
         let matrix = L.build_call add_int_matrix_f [| e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1|] "add_int_mat" builder
         in
         ignore(add_temp_matrix matrix row1 col1 "int");
-        (*Free used matrix literals and delete them from the map*)
-        ignore(L.build_call delete_matrix_f[|e1'; L.const_int i32_t row1; L.const_int i32_t col1;|] "delete_matrix" builder);
-        ignore(delete_mat e1');
-        ignore(delete_mat e2');
-        ignore(L.build_call delete_matrix_f[|e2'; L.const_int i32_t row2; L.const_int i32_t col2;|] "delete_matrix" builder);
+        free_matrix e1' row1 col1;
+        free_matrix e2' row2 col2;
         matrix
         else
         let matrix = L.build_call add_float_matrix_f [| e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1|] "add_float_mat" builder
         in
-        ignore(add_temp_matrix matrix row1 col1 "float"); matrix
+        ignore(add_temp_matrix matrix row1 col1 "float");
+        free_matrix e1' row1 col1;
+        free_matrix e2' row2 col2;
+        matrix
     | A.Sub when dimension_check    ->
         if ((extract_type e1') = "int" && (extract_type e2') = "int") then
         let matrix = L.build_call subtract_int_matrix_f [| e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1|] "subtract_int_mat" builder
         in
-        ignore(add_temp_matrix matrix row1 col1 "int"); matrix
+        ignore(add_temp_matrix matrix row1 col1 "int");
+        free_matrix e1' row1 col1;
+        free_matrix e2' row2 col2;
+        matrix
         else
         let matrix = L.build_call subtract_float_matrix_f [| e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1|] "subtract_float_mat" builder
         in
-        ignore(add_temp_matrix matrix row1 col1 "float"); matrix
+        ignore(add_temp_matrix matrix row1 col1 "float");
+        free_matrix e1' row1 col1;
+        free_matrix e2' row2 col2;
+        matrix
     | A.Mult when mult_dimension_check ->
         if ((extract_type e1') = "int" && (extract_type e2') = "int") then
         let matrix = L.build_call multiply_int_matrix_f [|e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1; L.const_int i32_t col2|] "multiply_int_mat" builder
         in
-        ignore(add_temp_matrix  matrix row1 col2 "int"); matrix
+        ignore(add_temp_matrix  matrix row1 col2 "int");
+        free_matrix e1' row1 col1;
+        free_matrix e2' row2 col2;
+        matrix
         else
         let matrix = L.build_call multiply_float_matrix_f [|e1'; e2'; L.const_int i32_t row1; L.const_int i32_t col1; L.const_int i32_t col2|] "multiply_float_mat" builder
         in
-        ignore(add_temp_matrix  matrix row1 col2 "float"); matrix
+        ignore(add_temp_matrix  matrix row1 col2 "float");
+        free_matrix e1' row1 col1;
+        free_matrix e2' row2 col2;
+        matrix
     |_ -> raise (Failure "Matrix dimension mismatch")
     else if (L.type_of e1' = string_t && L.type_of e2' = string_t) then
       match op with
