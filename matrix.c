@@ -233,6 +233,7 @@ void print_int_matrix(int_matrix* mat_ptr, int row, int col){
     for(int i = 0; i < row; i++){
       for(int j = 0; j < col; j++){
         if(i == (row - 1) && j == (col - 1)) printf("%d]\n", mat[i][j]);
+        else if(i == 0 && j == 0 && col == 1) printf("%d\n", mat[i][j]);
         else if(i == 0 && j == 0) printf("%d, ", mat[i][j]);
         else if(j == (col - 1)) printf("%d\n", mat[i][j]);
         else if(j == 0) printf(" %d, ", mat[i][j]);
@@ -357,6 +358,12 @@ int_matrix* int_transpose(int_matrix* matrix, int row, int col){
         res[i] = malloc(row * sizeof(int));
     }
 
+  // if(row == 1){
+  //   for(int i = 0; i < row; i++){
+  //     res[]
+  //   }
+  // }
+
   for(int i = 0; i < row; i++){
         for(int j = 0; j < col; j++){
             res[j][i] = m1[i][j];
@@ -385,6 +392,15 @@ int_matrix* float_transpose(int_matrix* matrix, int row, int col){
     result->matrix_pointer = (void**) res;
     
     return result;
+}
+
+int int_select(int_matrix* matrix, int row, int col, int index1, int index2){
+  int** m1 = (int**) matrix->matrix_pointer;
+
+  if(row==1) return m1[0][index2];
+  else if(col ==1) return m1[index1][0];
+
+  return m1[index1][index2];
 }
 
 // int_matrix* int_inverse(int_matrix* matrix, int dim){
@@ -443,20 +459,20 @@ int_matrix* float_transpose(int_matrix* matrix, int row, int col){
 #ifdef BUILD_TEST
 int main(){
 
-    int a1[] = {1, 2, 3,4,5,6,7,2,9};
+    int a1[] = {1, 2, 3,4,5,6,7,8,9};
     //int* a[1];
     //a[0] = a1;
     int_matrix* res = init_int_matrix(3, 3);
     
     int a1_length = sizeof(a1) / sizeof(int);
     // printf("The length is %d", a1_length);
+    
     for(int i = 0; i < a1_length; i++){
       fill_int_matrix(res, 3, 3, a1[i]);
     }
+    print_int_matrix(res, 3, 3);
 
-    
-
-    print_int_matrix(int_transpose(res,3,3), 3, 3);
+    printf("Index is %d\n",int_select(res,3,3,2,1));
     /*
     int b1[] = {1, 4, 7};
     int b2[] = {2, 5, 8};

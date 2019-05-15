@@ -114,10 +114,10 @@ let translate (globals, functions) =
   let determinant_float_matrix_t = L.function_type i32_t [|int_mat_t; i32_t|] in
   let determinant_float_matrix_f = L.declare_function "float_det" determinant_float_matrix_t the_module in
 
-  (* let inverse_int_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t|] in
-  let inverse_int_matrix_f = L.declare_function "int_inverse" inverse_int_matrix_t the_module in
+  let select_int_index_t = L.function_type i32_t [|int_mat_t; i32_t; i32_t; i32_t; i32_t|] in
+  let select_int_index_f = L.declare_function "int_select" select_int_index_t the_module in
 
-  let inverse_float_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t|] in
+  (* let inverse_float_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t|] in
   let inverse_float_matrix_f = L.declare_function "float_inverse" inverse_float_matrix_t the_module in *)
 
   let transpose_int_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t; i32_t|] in
@@ -437,35 +437,22 @@ let translate (globals, functions) =
           else
             L.build_call determinant_float_matrix_f [|(e'); (L.const_int i32_t rows)|] "float_det" builder
         else raise(Failure "Determinant can't be calculated for a matrix that doesn't have eqaul number of rows and columns")
-      (* | SCall ("scale", [e, e1]) ->
+      | SCall ("select", [e,e1,e2]) ->
         (*need to add dimension checking*)
         let e' = expr builder e
+        in
+        let rows = extract_row e'
+        in
+        let cols = extract_col e'
         in
         let e1' = expr builder e1
         in
-        let rows = extract_row e'
-        in
-        let cols = extract_col e'
+        let e2' = expr builder e2
         in
         if ((extract_type e') = "int") then
-          L.build_call scale_int_matrix_f [|(e'); (L.const_int i32_t e1') ;(L.const_int i32_t rows); (L.const_int i32_t cols)|] "scale_int_matrix" builder
+          L.build_call select_int_index_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols); (L.const_int i32_t e1'); (L.const_int i32_t e2')|] "int_select" builder
         else
-          L.build_call scale_float_matrix_f [|(e'); (L.const_int i32_t e1') ;(L.const_int i32_t rows); (L.const_int i32_t cols)|] "scale_float_matrix" builder *)
-  
-      (* | SCall ("inverse", [e]) ->
-        (*need to add dimension checking*)
-        let e' = expr builder e
-        in
-        let rows = extract_row e'
-        in
-        let cols = extract_col e'
-        in
-        if rows = cols then
-          if ((extract_type e') = "int") then
-            L.build_call inverse_int_matrix_f [|(e'); (L.const_int i32_t rows)|] "int_inverse" builder
-          else
-            L.build_call inverse_float_matrix_f [|(e'); (L.const_int i32_t rows)|] "float_inverse" builder
-        else raise(Failure "Inverse can't be calculated for a matrix that doesn't have equal number of rows and columns") *)
+          L.build_call select_int_index_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols); (L.const_int i32_t e1'); (L.const_int i32_t e2')|] "float_select" builder
       | SCall ("transpose", [e]) ->
         let e' = expr builder e
         in
