@@ -419,9 +419,15 @@ int int_select(int_matrix* matrix, int row, int col, int index1, int index2){
 
     if(row==1) return m1[0][index2];
     else if(col ==1) return m1[index1][0];
-
     return m1[index1][index2];
 }
+
+void set_int_matrix(int_matrix* dest, int row, int col, int element){
+    int** mat = (int**) dest->matrix_pointer;
+    mat[row][col] = element;
+}
+
+
 
 #ifdef BUILD_TEST
 int main(){

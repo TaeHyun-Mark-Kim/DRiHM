@@ -55,6 +55,9 @@ let check (globals, functions) =
                                ("det", [Matrix], Int);
                                ("transpose", [Matrix], Matrix);
                                ("select", [Matrix; Int; Int], Int);
+                               ("row", [Matrix], Int);
+                               ("col", [Matrix], Int);
+                               ("set", [Matrix; Int; Int; Int], Void);
                                ("prints", [String], Void);
 			                         ("printbig", [Int], Void) ]
   in
