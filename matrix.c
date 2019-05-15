@@ -27,8 +27,6 @@ int_matrix* init_int_matrix(int row, int col){
     return result;
 }
 
-
-
 int_matrix* fill_int_matrix(int_matrix* dest, int row_size, int col_size, int element){
     int offset = dest->count;
     int row = offset / col_size;
@@ -403,58 +401,11 @@ int int_select(int_matrix* matrix, int row, int col, int index1, int index2){
   return m1[index1][index2];
 }
 
-// int_matrix* int_inverse(int_matrix* matrix, int dim){
-  
-//   int** m = (int**) matrix->matrix_pointer;
-//   double** res1 = malloc(dim * sizeof(double*));
-//   double** res2 = malloc(dim * sizeof(double*));
-
-//   for(int i = 0; i < dim; i++){
-//         res1[i] = malloc(dim * sizeof(double));
-//         res2[i] = malloc(dim * sizeof(double));
-//     }
-
-//   int det = int_det_helper(m, dim);
-
-//   if (det == 0){
-//     return NULL;
-//   }
-//   if (dim == 1){
-//     return((int_matrix*) 1); //not sure if works
-//   }
-
-
-//   for (int h = 0; h < dim; h++)
-// 		for (int l=0; l<dim; l++){
-// 			int n=0;
-// 			int k=0;
-// 			for (int i=0; i < dim; i++)
-// 				for (int j=0; j < dim; j++)
-// 					if (i != h && j != l){
-// 						res1[n][k] = m[i][j];
-// 						if (k<(n-2))
-// 							k++;
-// 						else{
-// 							k=0;
-// 							m++;
-// 						}
-// 					}
-// 			res2[h][l] = pow(-1,(h+l))*float_det_helper(res1,(dim-1));	// res2 = cofactor Matrix
-//     }
-
-//   for(int i = 0; i < dim; i++){
-//     for(int j = 0; j < dim; j++){
-//         res1[j][i] = res2[i][j]/det;
-//     }
-//   }
-
-//   int_matrix* result = malloc(sizeof(int_matrix));
-//   result->matrix_pointer = (void**) res1;
-
-// 	return result;
-// }
-
-
+void int_insert(int_matrix* dest, int row, int col, int index1, int index2, int element){
+    
+    int** mat = (int**) dest->matrix_pointer;
+    mat[index1][index2] = element;
+}
 
 #ifdef BUILD_TEST
 int main(){
@@ -472,7 +423,11 @@ int main(){
     }
     print_int_matrix(res, 3, 3);
 
-    printf("Index is %d\n",int_select(res,3,3,2,1));
+    printf("Index before %d\n",int_select(res,3,3,2,1));
+
+    int_insert(res,3,3,2,1,10);
+
+    printf("Index after %d\n",int_select(res,3,3,2,1));
     /*
     int b1[] = {1, 4, 7};
     int b2[] = {2, 5, 8};

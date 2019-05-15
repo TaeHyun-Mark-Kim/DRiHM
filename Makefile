@@ -40,6 +40,12 @@ matrix : matrix.c
 matrix.bc :matrix.c
 	clang -emit-llvm -o matrix.bc -c matrix.c -Wno-varargs
 
+.PHONY : demo
+demo: 
+	./drihm.native mytest/demo.dm > demo.ll
+	/usr/bin/llc -relocation-model=pic demo.ll > demo.s
+	cc -o demo.exe demo.s matrix.o -lm
+	./demo.exe
 
 # Building the tarball
 

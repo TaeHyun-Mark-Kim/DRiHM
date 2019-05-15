@@ -117,8 +117,8 @@ let translate (globals, functions) =
   let select_int_index_t = L.function_type i32_t [|int_mat_t; i32_t; i32_t; i32_t; i32_t|] in
   let select_int_index_f = L.declare_function "int_select" select_int_index_t the_module in
 
-  (* let inverse_float_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t|] in
-  let inverse_float_matrix_f = L.declare_function "float_inverse" inverse_float_matrix_t the_module in *)
+  let insert_int_index_t = L.function_type i32_t [|int_mat_t; i32_t; i32_t; i32_t; i32_t; i32_t|] in
+  let insert_int_index_f = L.declare_function "int_insert" insert_int_index_t the_module in
 
   let transpose_int_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t; i32_t|] in
   let transpose_int_matrix_f = L.declare_function "int_transpose" transpose_int_matrix_t the_module in
@@ -453,6 +453,24 @@ let translate (globals, functions) =
           L.build_call select_int_index_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols); (e1'); (e2')|] "int_select" builder
         else
           L.build_call select_int_index_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols); (e1'); (e2')|] "float_select" builder
+        | SCall ("insert", [e; e1; e2; e3]) ->
+        (*need to add dimension checking*)
+        let e' = expr builder e
+        in
+        let rows = extract_row e'
+        in
+        let cols = extract_col e'
+        in
+        let e1' = expr builder e1
+        in
+        let e2' = expr builder e2
+        in
+        let e3' = expr builder e3
+        in
+        if ((extract_type e') = "int") then
+          L.build_call insert_int_index_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols); (e1'); (e2'); (e3')|] "int_insert" builder
+        else
+          L.build_call insert_int_index_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols); (e1'); (e2'); (e3')|] "float_insert" builder
       | SCall ("transpose", [e]) ->
         let e' = expr builder e
         in
