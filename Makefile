@@ -35,7 +35,7 @@ clean :
 # 	cc -o printbig -DBUILD_TEST printbig.c
 
 matrix : matrix.c
-	cc -o matrix -DBUILD_TEST matrix.c
+	cc -o matrix -DBUILD_TEST matrix.c -lm
 
 matrix.bc :matrix.c
 	clang -emit-llvm -o matrix.bc -c matrix.c -Wno-varargs

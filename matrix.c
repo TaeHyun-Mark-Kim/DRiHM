@@ -349,18 +349,114 @@ double float_det(int_matrix* matrix, int dim){
   return float_det_helper(m, dim);
 }
 
+int_matrix* int_transpose(int_matrix* matrix, int row, int col){
+  int** m1 = (int**) matrix->matrix_pointer;
+  int** res = malloc(col * sizeof(int*));
+
+  for(int i = 0; i < col; i++){
+        res[i] = malloc(row * sizeof(int));
+    }
+
+  for(int i = 0; i < row; i++){
+        for(int j = 0; j < col; j++){
+            res[j][i] = m1[i][j];
+        }
+    }
+    int_matrix* result = malloc(sizeof(int_matrix));
+    result->matrix_pointer = (void**) res;
+    
+    return result;
+}
+
+int_matrix* float_transpose(int_matrix* matrix, int row, int col){
+  double** m1 = (double**) matrix->matrix_pointer;
+  double** res = malloc(col * sizeof(double*));
+
+  for(int i = 0; i < col; i++){
+        res[i] = malloc(row * sizeof(double));
+    }
+
+  for(int i = 0; i < row; i++){
+        for(int j = 0; j < col; j++){
+            res[j][i] = m1[i][j];
+        }
+    }
+    int_matrix* result = malloc(sizeof(int_matrix));
+    result->matrix_pointer = (void**) res;
+    
+    return result;
+}
+
+// int_matrix* int_inverse(int_matrix* matrix, int dim){
+  
+//   int** m = (int**) matrix->matrix_pointer;
+//   double** res1 = malloc(dim * sizeof(double*));
+//   double** res2 = malloc(dim * sizeof(double*));
+
+//   for(int i = 0; i < dim; i++){
+//         res1[i] = malloc(dim * sizeof(double));
+//         res2[i] = malloc(dim * sizeof(double));
+//     }
+
+//   int det = int_det_helper(m, dim);
+
+//   if (det == 0){
+//     return NULL;
+//   }
+//   if (dim == 1){
+//     return((int_matrix*) 1); //not sure if works
+//   }
+
+
+//   for (int h = 0; h < dim; h++)
+// 		for (int l=0; l<dim; l++){
+// 			int n=0;
+// 			int k=0;
+// 			for (int i=0; i < dim; i++)
+// 				for (int j=0; j < dim; j++)
+// 					if (i != h && j != l){
+// 						res1[n][k] = m[i][j];
+// 						if (k<(n-2))
+// 							k++;
+// 						else{
+// 							k=0;
+// 							m++;
+// 						}
+// 					}
+// 			res2[h][l] = pow(-1,(h+l))*float_det_helper(res1,(dim-1));	// res2 = cofactor Matrix
+//     }
+
+//   for(int i = 0; i < dim; i++){
+//     for(int j = 0; j < dim; j++){
+//         res1[j][i] = res2[i][j]/det;
+//     }
+//   }
+
+//   int_matrix* result = malloc(sizeof(int_matrix));
+//   result->matrix_pointer = (void**) res1;
+
+// 	return result;
+// }
+
+
+
 #ifdef BUILD_TEST
 int main(){
 
-    int a1[] = {1, 2, 3,4,5,6};
+    int a1[] = {1, 2, 3,4,5,6,7,2,9};
     //int* a[1];
     //a[0] = a1;
-    int_matrix* res = init_int_matrix(2, 3);
+    int_matrix* res = init_int_matrix(3, 3);
+    
     int a1_length = sizeof(a1) / sizeof(int);
+    // printf("The length is %d", a1_length);
     for(int i = 0; i < a1_length; i++){
-      fill_int_matrix(res, 2, 3, a1[i]);
+      fill_int_matrix(res, 3, 3, a1[i]);
     }
-    print_int_matrix(res, 2, 3);
+
+    
+
+    print_int_matrix(int_transpose(res,3,3), 3, 3);
     /*
     int b1[] = {1, 4, 7};
     int b2[] = {2, 5, 8};

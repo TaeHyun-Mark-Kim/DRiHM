@@ -7,10 +7,10 @@
 
 # Path to the LLVM interpreter
 #LLI="lli"
-LLI="/usr/local/opt/llvm/bin/lli"
+LLI="/usr/bin/lli"
 
 # Path to the LLVM compiler
-LLC="/usr/local/opt/llvm/bin/llc"
+LLC="/usr/bin/llc"
 
 # Path to the C compiler
 CC="cc"
@@ -95,7 +95,7 @@ Check() {
     Run "$DRIHM" "$1" ">" "${basename}.ll" &&
     Run "$LLC" "-relocation-model=pic" "${basename}.ll" ">" "${basename}.s" &&
     # Run "$CC" "-o" "${basename}.exe" "${basename}.s" "printbig.o" &&
-    Run "$CC" "-o" "${basename}.exe" "${basename}.s" "matrix.o" &&
+    Run "$CC" "-o" "${basename}.exe" "${basename}.s" "matrix.o" "-lm" &&
     Run "./${basename}.exe" > "${basename}.out" &&
     Compare ${basename}.out ${reffile}.out ${basename}.diff
 

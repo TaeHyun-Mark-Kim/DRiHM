@@ -102,6 +102,9 @@ let translate (globals, functions) =
   let multiply_int_matrix_t = L.function_type int_mat_t [|int_mat_t; int_mat_t; i32_t; i32_t; i32_t|] in
   let multiply_int_matrix_f = L.declare_function "multiply_int_matrix" multiply_int_matrix_t the_module in
 
+  let scale_int_matrix_t = L.function_type int_mat_t [|i32_t; int_mat_t; i32_t; i32_t; i32_t|] in
+  let scale_int_matrix_f = L.declare_function "scale_int_matrix" scale_int_matrix_t the_module in
+
   let multiply_float_matrix_t = L.function_type int_mat_t [|int_mat_t; int_mat_t; i32_t; i32_t; i32_t|] in
   let multiply_float_matrix_f = L.declare_function "multiply_float_matrix" multiply_float_matrix_t the_module in
 
@@ -110,6 +113,18 @@ let translate (globals, functions) =
 
   let determinant_float_matrix_t = L.function_type i32_t [|int_mat_t; i32_t|] in
   let determinant_float_matrix_f = L.declare_function "float_det" determinant_float_matrix_t the_module in
+
+  (* let inverse_int_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t|] in
+  let inverse_int_matrix_f = L.declare_function "int_inverse" inverse_int_matrix_t the_module in
+
+  let inverse_float_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t|] in
+  let inverse_float_matrix_f = L.declare_function "float_inverse" inverse_float_matrix_t the_module in *)
+
+  let transpose_int_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t; i32_t|] in
+  let transpose_int_matrix_f = L.declare_function "int_transpose" transpose_int_matrix_t the_module in
+
+  let transpose_float_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t; i32_t|] in
+  let transpose_float_matrix_f = L.declare_function "float_transpose" transpose_float_matrix_t the_module in
 
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
@@ -370,7 +385,7 @@ let translate (globals, functions) =
 	    A.Add     -> L.build_add
 	  | A.Sub     -> L.build_sub
 	  | A.Mult    -> L.build_mul
-          | A.Div     -> L.build_sdiv
+    | A.Div     -> L.build_sdiv
 	  | A.And     -> L.build_and
 	  | A.Or      -> L.build_or
 	  | A.Equal   -> L.build_icmp L.Icmp.Eq
@@ -422,9 +437,53 @@ let translate (globals, functions) =
           else
             L.build_call determinant_float_matrix_f [|(e'); (L.const_int i32_t rows)|] "float_det" builder
         else raise(Failure "Determinant can't be calculated for a matrix that doesn't have eqaul number of rows and columns")
+      (* | SCall ("scale", [e, e1]) ->
+        (*need to add dimension checking*)
+        let e' = expr builder e
+        in
+        let e1' = expr builder e1
+        in
+        let rows = extract_row e'
+        in
+        let cols = extract_col e'
+        in
+        if ((extract_type e') = "int") then
+          L.build_call scale_int_matrix_f [|(e'); (L.const_int i32_t e1') ;(L.const_int i32_t rows); (L.const_int i32_t cols)|] "scale_int_matrix" builder
+        else
+          L.build_call scale_float_matrix_f [|(e'); (L.const_int i32_t e1') ;(L.const_int i32_t rows); (L.const_int i32_t cols)|] "scale_float_matrix" builder *)
+  
+      (* | SCall ("inverse", [e]) ->
+        (*need to add dimension checking*)
+        let e' = expr builder e
+        in
+        let rows = extract_row e'
+        in
+        let cols = extract_col e'
+        in
+        if rows = cols then
+          if ((extract_type e') = "int") then
+            L.build_call inverse_int_matrix_f [|(e'); (L.const_int i32_t rows)|] "int_inverse" builder
+          else
+            L.build_call inverse_float_matrix_f [|(e'); (L.const_int i32_t rows)|] "float_inverse" builder
+        else raise(Failure "Inverse can't be calculated for a matrix that doesn't have equal number of rows and columns") *)
+      | SCall ("transpose", [e]) ->
+        let e' = expr builder e
+        in
+        let rows = extract_row e'
+        in
+        let cols = extract_col e'
+        in
+        if ((extract_type e') = "int") then
+          let matrix = L.build_call transpose_int_matrix_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols)|] "int_transpose" builder
+          in
+          ignore(add_temp_matrix  matrix cols rows "int"); matrix
+        else
+          let matrix = L.build_call transpose_float_matrix_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols)|] "float_transpose" builder
+          in
+          ignore(add_temp_matrix  matrix cols rows "float"); matrix
       | SCall ("prints", [e]) ->
-    L.build_call printf_func [| string_format_str ; (expr builder e) |]
-      "printf" builder
+        L.build_call printf_func [| string_format_str ; (expr builder e) |]
+        "printf" builder
       | SCall (f, args) ->
          let (fdef, fdecl) = StringMap.find f function_decls in
 	 let llargs = List.rev (List.map (expr builder) (List.rev args)) in
