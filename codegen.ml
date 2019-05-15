@@ -237,6 +237,23 @@ let translate (globals, functions) =
         ignore(delete_mat mat_ptr);
     in
 
+    let free_matrix2 mat_ptr row col =
+        ignore(L.build_call delete_matrix_f[|mat_ptr; L.const_int i32_t row; L.const_int i32_t col;|] "delete_matrix" builder);
+        ignore(delete_mat mat_ptr);
+    in
+  (*Frees all matrices of variables at the end of the function*)
+    let free_all_local_matrix =
+      let bind_list = StringMap.bindings !var_matrix_map
+      in
+      let get_val ( _, a) = a
+      in
+      let delete m =
+        let ptr = get_val m
+        in
+        free_matrix2 ptr (extract_row ptr) (extract_col ptr)
+      in
+      List.map delete bind_list
+    in
     (*Map of string pointers to strings*)
     let temp_string_map = ref StringMap.empty
     in
@@ -310,7 +327,7 @@ let translate (globals, functions) =
             ignore(add_temp_matrix matrix rows cols "float");
             ignore(List.map (fun elt -> L.build_call fill_float_matrix_f [|matrix; L.const_int i32_t rows; L.const_int i32_t cols; elt|] "fill_float_matrix" builder) matrix_contents); matrix
             )
-          else raise(Failure "Marix contains incompatible type(s)")
+          else raise(Failure "Matrix contains incompatible type(s)")
     | SAssign (s, e) ->
       let e' = expr builder e
       in
@@ -524,9 +541,9 @@ let translate (globals, functions) =
       | SExpr e -> ignore(expr builder e); builder
       | SReturn e -> ignore(match fdecl.styp with
                               (* Special "return nothing" instr *)
-                              A.Void -> L.build_ret_void builder
+                              A.Void -> free_all_local_matrix; L.build_ret_void builder
                               (* Build return statement *)
-                            | _ -> L.build_ret (expr builder e) builder );
+                            | _ -> free_all_local_matrix; L.build_ret (expr builder e) builder );
                      builder
       | SIf (predicate, then_stmt, else_stmt) ->
          let bool_val = expr builder predicate in
@@ -554,18 +571,6 @@ let translate (globals, functions) =
 	 L.builder_at_end context merge_bb
 
       | SWhile (predicate, body) ->
-
-    (* let while_b = L.append_block context "while_end" the_function in
-    (* generate label, then code for predicate *)
-    let while_end = L.build_br while_b in
-      (* Check statement *)
-    let bool_addr = build_expr predicate in
-
-    (* now we need to jump the body*)
-    let body_b = L.append_block contest "while_body" the_function in
-        (* Check statement *)
-    ignore(build_stmt the_function (L.builder_at_end context body_b) body);
-    add_terminal (stmt (L.builder_at_end context body_b) br_while; *)
 
 	  let pred_bb = L.append_block context "while" the_function in
 	  ignore(L.build_br pred_bb builder);
