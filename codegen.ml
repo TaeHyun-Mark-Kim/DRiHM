@@ -36,7 +36,6 @@ let translate (globals, functions) =
   and float_t    = L.double_type context
   and void_t     = L.void_type   context
   and string_t   = L.pointer_type (L.i8_type context)
-  and int_ptr_t  = L.pointer_type (L.i32_type context)
   and int_mat_t   = L.pointer_type (match L.type_by_name llmbit "struct.int_matrix" with (******)
       None -> raise (Failure "Matrix type is missing in C")
     | Some t -> t)
@@ -78,9 +77,6 @@ let translate (globals, functions) =
 
   let print_float_matrix_t = L.function_type i32_t [| int_mat_t; i32_t ; i32_t |] in
   let print_float_matrix_f = L.declare_function "print_float_matrix" print_float_matrix_t the_module in
-
-  let sample_print_t = L.function_type i32_t [||] in
-  let sample_print_f = L.declare_function "sample_print" sample_print_t the_module in
 
   let init_int_matrix_t = L.function_type int_mat_t [|(*int_ptr_t;*) i32_t ; i32_t|] in
   let init_int_matrix_f = L.declare_function "init_int_matrix" init_int_matrix_t the_module in
@@ -188,15 +184,12 @@ let translate (globals, functions) =
     in
     let extract_row mat = match (lookup_dim mat) with
     (row, _, _) -> row
-    | _ -> raise(Failure "Matrix missing dimension infomation")
     in
     let extract_col mat = match (lookup_dim mat) with
     (_, col, _) -> col
-    | _ -> raise(Failure "Matrix missing dimension information")
     in
     let extract_type mat = match (lookup_dim mat) with
     (_, _, t) -> t
-    | _ -> raise(Failure "Matrix missing type information")
     in
 
     (*Map of matrix variables to matrix pointers*)
@@ -206,7 +199,7 @@ let translate (globals, functions) =
     let add_var_matrix s mat_ptr =
       var_matrix_map := StringMap.add s mat_ptr !var_matrix_map
     in
-    let lookup_mat s =
+    let [@warning "-40"] lookup_mat s =
       StringMap.find s !var_matrix_map
     in
 
@@ -216,7 +209,7 @@ let translate (globals, functions) =
     let add_temp_string string_ptr string =
       temp_string_map := StringMap.add (L.string_of_llvalue string_ptr) string !temp_string_map;
     in
-    let lookup_string string_ptr =
+    let [@warning "-40"] lookup_string string_ptr =
       StringMap.find (L.string_of_llvalue string_ptr) !temp_string_map
     in
 
@@ -232,18 +225,17 @@ let translate (globals, functions) =
     in
 
     let rec expr2 builder ((_, e) : sexpr) = (match e with
-       SLiteral i  ->  [L.const_int i32_t i]
+        SLiteral i  ->  [L.const_int i32_t i]
       | SBoolLit b  -> [L.const_int i1_t (if b then 1 else 0)]
       | SFliteral l -> [L.const_float float_t l]
       (*Turn character into integer representation*)
       | SCliteral l -> [L.const_int i8_t (int_of_char l)]
       | SSliteral l -> [L.build_global_stringptr l "string" builder]
       | SNoexpr     -> [L.const_int i32_t 0]
-      | SLiteral i  -> [L.const_int i32_t i]
-      | SMatrixLit (contents, rows, cols) -> build_contents_list contents
+      | SMatrixLit (contents, _, _ ) -> build_contents_list contents
+      | _ -> raise (Failure "Invalid data type in matrix")
     )
-      (* | SId s       -> L.build_load (lookup s) s builder *)
-and
+   and
    build_contents_list mat_contents =
      let rec go acc = function
       | [] -> acc
