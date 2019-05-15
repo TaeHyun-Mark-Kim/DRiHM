@@ -55,7 +55,7 @@ let check (globals, functions) =
                                ("det", [Matrix], Int);
                                (* ("inverse", [Matrix], Int); *)
                                ("transpose", [Matrix], Matrix);
-                               ("select", [Matrix, Int, Int], Int);
+                               ("select", [Matrix; Int; Int], Int);
                                ("prints", [String], Void);
 			                         ("printbig", [Int], Void) ]
   in
