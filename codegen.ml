@@ -126,6 +126,12 @@ let translate (globals, functions) =
   let transpose_float_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t; i32_t|] in
   let transpose_float_matrix_f = L.declare_function "float_transpose" transpose_float_matrix_t the_module in
 
+  let set_int_matrix_t = L.function_type i32_t [|int_mat_t; i32_t; i32_t; i32_t;|] in
+	let set_int_matrix_f = L.declare_function "set_int_matrix" set_int_matrix_t the_module in
+
+  let delete_matrix_t = L.function_type i32_t [|int_mat_t; i32_t; i32_t|] in
+  let delete_matrix_f = L.declare_function "delete_matrix" delete_matrix_t the_module in
+
   (* Define each function (arguments and return type) so we can
      call it even before we've created its body *)
   let function_decls : (L.llvalue * sfunc_decl) StringMap.t =
@@ -164,13 +170,7 @@ let translate (globals, functions) =
 	in StringMap.add n local_var m
       in
 (*********)
-      (*let add_assign (tp, vName, ex) =
-        match ex with
-        SNoexpr -> (tp, vName)
-        | _ ->
-        let e' = expr builder e in
-          ignore(L.build_store e' (lookup s) builder);
-      *)
+
       let sformals = List.map (fun (tp, vName, _) -> (tp, vName)) fdecl.sformals in
       let slocals= List.map (fun (tp, vName, _) -> (tp, vName)) fdecl.slocals in
 (*********)
@@ -192,19 +192,22 @@ let translate (globals, functions) =
     in
     (*Add row and col dimension information of a newly created matrix*)
     let add_temp_matrix mat_ptr rows cols t =
-      temp_matrix_map := StringMap.add (L.value_name mat_ptr) (rows, cols, t) !temp_matrix_map
+      temp_matrix_map := StringMap.add (L.value_name mat_ptr) (rows, cols, t, mat_ptr) !temp_matrix_map
     in
     let lookup_dim mat_ptr =
       StringMap.find (L.value_name mat_ptr) !temp_matrix_map
     in
     let extract_row mat = match (lookup_dim mat) with
-    (row, _, _) -> row
+    (row, _, _, _) -> row
     in
     let extract_col mat = match (lookup_dim mat) with
-    (_, col, _) -> col
+    (_, col, _, _) -> col
     in
     let extract_type mat = match (lookup_dim mat) with
-    (_, _, t) -> t
+    (_, _, t, _) -> t
+    in
+    let delete_mat mat =
+    StringMap.remove (L.value_name mat) !temp_matrix_map
     in
 
     (*Map of matrix variables to matrix pointers*)
@@ -217,6 +220,25 @@ let translate (globals, functions) =
     let [@warning "-40"] lookup_mat s =
       StringMap.find s !var_matrix_map
     in
+    let free_matrix2 mat_ptr row col =
+    ignore(L.build_call delete_matrix_f[|mat_ptr; L.const_int i32_t row; L.const_int i32_t col;|] "delete_matrix" builder);
+    ignore(delete_mat mat_ptr);
+in
+(*Frees all local matrices at the end of the function*)
+let free_all_local_matrix =
+  let bind_list = StringMap.bindings !temp_matrix_map
+  in
+  let get_ptr (_, (_,_,_, ptr)) = ptr
+  in
+  let get_row (_, (row,_,_,_)) = row
+  in
+  let get_col (_, (_,col,_,_)) = col
+  in
+  let delete m =
+    free_matrix2 (get_ptr m) (get_row m) (get_col m)
+  in
+  List.map delete bind_list
+  in
 
     (*Map of string pointers to strings*)
     let temp_string_map = ref StringMap.empty
@@ -486,6 +508,22 @@ let translate (globals, functions) =
           let matrix = L.build_call transpose_float_matrix_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols)|] "float_transpose" builder
           in
           ignore(add_temp_matrix  matrix cols rows "float"); matrix
+      | SCall("set", [e; e1; e2; e3]) ->
+        let e' = expr builder e
+        in
+        L.build_call set_int_matrix_f [|(e'); (expr builder e1); (expr builder e2); (expr builder e3)|] "set_matrix" builder
+      | SCall ("row", [e]) ->
+          let e' = expr builder e
+          in
+          let rows = extract_row e'
+          in
+          L.const_int i32_t rows
+      | SCall ("col", [e]) ->
+            let e' = expr builder e
+            in
+            let cols = extract_col e'
+            in
+            L.const_int i32_t cols
       | SCall ("prints", [e]) ->
         L.build_call printf_func [| string_format_str ; (expr builder e) |]
         "printf" builder
@@ -516,9 +554,9 @@ let translate (globals, functions) =
       | SExpr e -> ignore(expr builder e); builder
       | SReturn e -> ignore(match fdecl.styp with
                               (* Special "return nothing" instr *)
-                              A.Void -> L.build_ret_void builder
+                              A.Void -> free_all_local_matrix; L.build_ret_void builder
                               (* Build return statement *)
-                            | _ -> L.build_ret (expr builder e) builder );
+                            | _ -> free_all_local_matrix; L.build_ret (expr builder e) builder );
                      builder
       | SIf (predicate, then_stmt, else_stmt) ->
          let bool_val = expr builder predicate in

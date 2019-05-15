@@ -16,6 +16,29 @@ void** init_empty_matrix(){
     return res;
 }
 
+void delete_matrix(int_matrix* matrix, int row, int col){
+	  void** mat = matrix->matrix_pointer;
+	  for(int i = 0; i < row; i++){
+	    free(mat[i]);
+	  }
+	  free(mat);
+	  free(matrix);
+	}
+
+	void delete_int_matrix_ptr(int** mat, int row, int col){
+	  for(int i = 0; i < row; i++){
+	    free(mat[i]);
+	  }
+	  free(mat);
+	}
+
+	void delete_float_matrix_ptr(double** mat, int row, int col){
+	  for(int i = 0; i < row; i++){
+	    free(mat[i]);
+	  }
+	  free(mat);
+	}
+
 int_matrix* init_int_matrix(int row, int col){
     void** res = malloc(row * sizeof(void*));
     for(int i = 0; i < row; i++){
@@ -297,7 +320,9 @@ int int_det_helper(int** m, int dim){
 		return ( (m[0][0] * m[1][1]) - (m[1][0] * m[0][1]));
 	}
 	for(int i = 0; i < dim; i++){
-    d+= ((int) pow(-1.0, (double) i)) * m[0][i] * int_det_helper(int_cofactorM(m, dim, 0, i), dim - 1);
+    int** cofactor = int_cofactorM(m, dim, 0, i);
+	  d+= ((int) pow(-1.0, (double) i)) * m[0][i] * int_det_helper(cofactor, dim - 1);
+	  delete_int_matrix_ptr(cofactor, dim - 1, dim - 1);
 	}
 	return d;
 }
@@ -338,7 +363,9 @@ double float_det_helper(double** m, int dim){
 		return ( (m[0][0] * m[1][1]) - (m[1][0] * m[0][1]));
 	}
 	for(int i = 0; i < dim; i++){
-    d+= ((int) pow(-1.0, (double) i)) * m[0][i] * float_det_helper(float_cofactorM(m, dim, 0, i), dim - 1);
+    double** cofactor = float_cofactorM(m, dim, 0, i);
+	  d+= ((int) pow(-1.0, (double) i)) * m[0][i] * float_det_helper(cofactor, dim - 1);
+	  delete_float_matrix_ptr(cofactor, dim - 1, dim - 1);
 	}
 	return d;
 }
@@ -369,7 +396,7 @@ int_matrix* int_transpose(int_matrix* matrix, int row, int col){
     }
     int_matrix* result = malloc(sizeof(int_matrix));
     result->matrix_pointer = (void**) res;
-    
+
     return result;
 }
 
@@ -388,9 +415,14 @@ int_matrix* float_transpose(int_matrix* matrix, int row, int col){
     }
     int_matrix* result = malloc(sizeof(int_matrix));
     result->matrix_pointer = (void**) res;
-    
+
     return result;
 }
+
+void set_int_matrix(int_matrix* dest, int row, int col, int element){
+	    int** mat = (int**) dest->matrix_pointer;
+	    mat[row][col] = element;
+	}
 
 int int_select(int_matrix* matrix, int row, int col, int index1, int index2){
   int** m1 = (int**) matrix->matrix_pointer;
@@ -402,7 +434,7 @@ int int_select(int_matrix* matrix, int row, int col, int index1, int index2){
 }
 
 void int_insert(int_matrix* dest, int row, int col, int index1, int index2, int element){
-    
+
     int** mat = (int**) dest->matrix_pointer;
     mat[index1][index2] = element;
 }
@@ -414,10 +446,10 @@ int main(){
     //int* a[1];
     //a[0] = a1;
     int_matrix* res = init_int_matrix(3, 3);
-    
+
     int a1_length = sizeof(a1) / sizeof(int);
     // printf("The length is %d", a1_length);
-    
+
     for(int i = 0; i < a1_length; i++){
       fill_int_matrix(res, 3, 3, a1[i]);
     }
