@@ -1,0 +1,7 @@
+.vscode/
+_build/
+demo.dm
+*.log
+drihm.native
+*.bc
+*.o

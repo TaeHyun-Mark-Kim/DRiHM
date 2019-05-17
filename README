@@ -30,43 +30,6 @@ eval $(opam config env)
 or run ocamlbuild like this:
 
 opam config exec -- ocamlbuild <args>
-------------------------------
-Using Docker
-
-* Install Docker on whatever operating system you're on
-
-   Under Ubuntu,
-   apt install docker.io
-
-* Test your installation
-
-   docker run hello-world
-
-  If this fails, you will need to correct your installation.
-
-  Under Ubuntu, add yourself to the "docker" group:
-  
-  sudo usermod -aG docker <username>
-
-* Move to where you unpacked the microc source:
-
-  cd microc
-
-* Invoke docker
-
-  docker run --rm -it -v `pwd`:/home/microc -w=/home/microc columbiasedwards/plt
-
-* Inside docker, compile MicroC and run the regression tests:
-
-  # make
-  ...
-  test-add1...OK
-  test-arith1...OK
-  test-arith2...OK
-  test-arith3...OK
-  ... etc.
-
-  # make clean
 
 ------------------------------
 Installation under Ubuntu 16.04
@@ -250,11 +213,9 @@ ocamlbuild -use-ocamlfind -pkgs llvm,llvm.analysis -cflags -w,+a-4 microc.native
 Finished, 22 targets (0 cached) in 00:00:01.
 cc    -c -o printbig.o printbig.c
 $ ./testall.sh
-test-arith1...OK
-test-arith2...OK
-test-arith3...OK
-test-fib...OK
-...
-fail-while1...OK
-fail-while2...OK
+test-add2...OK
+test-char-add...OK
+test-char...OK
+test-demo2...OK
+test-float...OK
 
