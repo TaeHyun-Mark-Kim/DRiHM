@@ -439,6 +439,10 @@ void int_insert(int_matrix* dest, int row, int col, int index1, int index2, int 
     mat[index1][index2] = element;
 }
 
+int_matrix *inverse(int_matrix* matrix){
+  
+}
+
 #ifdef BUILD_TEST
 int main(){
 
