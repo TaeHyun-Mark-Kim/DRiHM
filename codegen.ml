@@ -126,6 +126,12 @@ let translate (globals, functions) =
   let transpose_float_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t; i32_t|] in
   let transpose_float_matrix_f = L.declare_function "float_transpose" transpose_float_matrix_t the_module in
 
+  let inverse_int_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t|] in
+  let inverse_int_matrix_f = L.declare_function "int_inverse" inverse_int_matrix_t the_module in
+
+  let inverse_float_matrix_t = L.function_type int_mat_t [|int_mat_t; i32_t|] in
+  let inverse_float_matrix_f = L.declare_function "float_inverse" inverse_float_matrix_t the_module in
+
   let set_int_matrix_t = L.function_type i32_t [|int_mat_t; i32_t; i32_t; i32_t;|] in
 	let set_int_matrix_f = L.declare_function "set_int_matrix" set_int_matrix_t the_module in
 
@@ -508,6 +514,24 @@ let free_all_local_matrix =
           let matrix = L.build_call transpose_float_matrix_f [|(e'); (L.const_int i32_t rows); (L.const_int i32_t cols)|] "float_transpose" builder
           in
           ignore(add_temp_matrix  matrix cols rows "float"); matrix
+        | SCall ("inverse", [e]) ->
+          let e' = expr builder e
+          in
+          let rows = extract_row e'
+          in
+          let cols = extract_col e'
+          in
+          if rows = cols then
+            if ((extract_type e') = "int") then
+              let matrix = L.build_call inverse_int_matrix_f [|(e'); (L.const_int i32_t rows)|] "int_inverse" builder
+              in
+              ignore(add_temp_matrix  matrix cols rows "float"); matrix
+            else
+              let matrix = L.build_call inverse_float_matrix_f [|(e'); (L.const_int i32_t rows)|] "float_inverse" builder
+              in
+              ignore(add_temp_matrix  matrix cols rows "float"); matrix
+          else raise(Failure "Inverse can't be calculated for a matrix that doesn't have equal number of rows and columns")    
+      
       | SCall("set", [e; e1; e2; e3]) ->
         let e' = expr builder e
         in
